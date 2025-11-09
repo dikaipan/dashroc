@@ -16,22 +16,22 @@ export default function PageLayout({
   headerClassName = '',
 }) {
   return (
-    <div className={`p-6 space-y-6 min-h-screen ${className} ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-900 overflow-auto' : ''}`}>
+    <div className={`p-3 sm:p-6 space-y-4 sm:space-y-6 min-h-screen ${className} ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-900 overflow-auto' : ''}`}>
       {/* Page Header */}
       {(title || actions || onToggleFullscreen) && (
-        <div className={`flex items-center justify-between flex-wrap gap-4 ${headerClassName}`}>
-          <div className="flex-1">
+        <div className={`flex items-center justify-between flex-wrap gap-3 sm:gap-4 ${headerClassName}`}>
+          <div className="flex-1 min-w-0">
             {title && (
-              <h1 className="text-3xl font-bold text-slate-100 mb-1">{title}</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-100 mb-1 truncate">{title}</h1>
             )}
             {subtitle && (
-              <p className="text-slate-400 mt-1">{subtitle}</p>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1">{subtitle}</p>
             )}
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             {actions && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {actions}
               </div>
             )}
@@ -42,7 +42,7 @@ export default function PageLayout({
                 className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-slate-100 border border-slate-700"
                 title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
               >
-                {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
               </button>
             )}
           </div>
@@ -50,7 +50,7 @@ export default function PageLayout({
       )}
 
       {/* Page Content */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {children}
       </div>
     </div>

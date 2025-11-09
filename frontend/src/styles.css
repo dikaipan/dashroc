@@ -973,13 +973,18 @@ div[style*="z-index: 50"] {
   }
   
   .main-area {
-    padding: 16px;
+    padding: 12px; /* Reduced from 16px */
     width: 100%;
     margin-top: 0;
   }
   
+  /* Responsive grid for cards */
   .kpi-card { 
     grid-column: span 12;
+  }
+  
+  .panels-grid {
+    gap: 12px; /* Reduced gap */
   }
   
   /* Mobile sidebar adjustments - TETAP VERTIKAL */
@@ -1056,6 +1061,96 @@ div[style*="z-index: 50"] {
   
   .mobile-sidebar.collapsed .nav-btn {
     justify-content: flex-start;
+  }
+  
+  /* Mobile-specific card styling */
+  .card, .panel {
+    padding: 12px !important; /* Reduced padding */
+    margin-bottom: 12px;
+  }
+  
+  /* Mobile table wrapper */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  table {
+    min-width: 600px; /* Ensure table doesn't squish */
+  }
+  
+  /* Mobile typography */
+  h1 {
+    font-size: 1.5rem !important; /* Smaller headings */
+  }
+  
+  h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  h3 {
+    font-size: 1.1rem !important;
+  }
+  
+  /* Mobile KPI cards */
+  .kpi-card h3 {
+    font-size: 1.75rem !important; /* Smaller numbers */
+  }
+  
+  .kpi-card p {
+    font-size: 0.75rem !important;
+  }
+  
+  /* Mobile chart containers */
+  .recharts-responsive-container {
+    min-height: 250px !important; /* Smaller charts */
+  }
+  
+  /* Mobile buttons */
+  button {
+    padding: 8px 12px !important;
+    font-size: 0.875rem !important;
+  }
+  
+  /* Mobile filters */
+  select, input {
+    font-size: 14px !important;
+    padding: 8px 12px !important;
+  }
+  
+  /* Mobile modals */
+  .modal, [class*="Modal"] {
+    margin: 0 !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  
+  /* Mobile spacing utilities */
+  .space-y-6 > * + * {
+    margin-top: 1rem !important; /* Reduced from 1.5rem */
+  }
+  
+  .gap-6 {
+    gap: 1rem !important;
+  }
+  
+  /* Mobile grid adjustments */
+  .grid {
+    gap: 0.75rem !important;
+  }
+  
+  .grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+  
+  .grid-cols-3, .grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  
+  /* Mobile map container */
+  .leaflet-container {
+    height: 300px !important; /* Smaller map */
+    border-radius: 8px;
   }
 }
 
