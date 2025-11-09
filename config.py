@@ -4,7 +4,7 @@ from typing import Set
 class Config:
     """Application configuration"""
     BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
-    DATA_DIR: str = os.path.join(BASE_DIR, "data")
+    DATA_DIR: str = os.environ.get('DATA_DIR', os.path.join(BASE_DIR, "data"))
     FRONTEND_DIR: str = os.path.join(BASE_DIR, "frontend")
     DIST_DIR: str = os.path.join(FRONTEND_DIR, "dist")
     

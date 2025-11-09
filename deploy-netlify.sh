@@ -17,6 +17,11 @@ npm install
 npm run build
 cd ..
 
+# Copy data files to functions directory
+echo "📁 Copying data files..."
+rm -rf netlify/functions/data
+cp -r data netlify/functions/data
+
 # Install function dependencies
 echo "📦 Installing function dependencies..."
 pip install -r netlify/functions/requirements.txt

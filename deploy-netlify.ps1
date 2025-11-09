@@ -15,6 +15,13 @@ npm install
 npm run build
 Set-Location ..
 
+# Copy data files to functions directory
+Write-Host "Copying data files..." -ForegroundColor Yellow
+if (Test-Path "netlify\functions\data") {
+    Remove-Item "netlify\functions\data" -Recurse -Force
+}
+Copy-Item "data" "netlify\functions\data" -Recurse -Force
+
 # Install function dependencies
 Write-Host "Installing function dependencies..." -ForegroundColor Yellow
 pip install -r netlify/functions/requirements.txt

@@ -4,10 +4,15 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  PYTHON_VERSION = "3.9"
+
+# Specify functions requirements separately
+[functions]
+  directory = "netlify/functions"
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api-complete"
+  to = "/.netlify/functions/api-basic"
   status = 200
 
 [[redirects]]
