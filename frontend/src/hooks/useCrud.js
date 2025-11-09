@@ -1,0 +1,178 @@
+/**
+ * Generic CRUD operations hook
+ * Reusable hook for Create, Read, Update, Delete operations
+ */
+import { useState, useCallback } from 'react';
+
+/**
+ * Generic CRUD hook
+ * @param {Object} config - Configuration object
+ * @param {string} config.endpoint - API endpoint base (e.g., '/api/engineers')
+ * @param {string} config.primaryKey - Primary key field name (e.g., 'id', 'wsid')
+ * @param {string} config.eventName - Custom event name to dispatch on data change
+ * @returns {Object} CRUD operations and state
+ */
+export function useCrud(config) {
+  const { endpoint, primaryKey = 'id', eventName = null } = config;
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  /**
+   * Create a new item
+   */
+  const create = useCallback(async (data) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create item');
+      }
+
+      const result = await response.json();
+
+      // Dispatch custom event to refresh data
+      if (eventName) {
+        window.dispatchEvent(new Event(eventName));
+      }
+
+      return result;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [endpoint, eventName]);
+
+  /**
+   * Update an existing item
+   */
+  const update = useCallback(async (id, data) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`${endpoint}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update item');
+      }
+
+      const result = await response.json();
+
+      // Dispatch custom event to refresh data
+      if (eventName) {
+        window.dispatchEvent(new Event(eventName));
+      }
+
+      return result;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [endpoint, eventName]);
+
+  /**
+   * Delete an item
+   */
+  const remove = useCallback(async (id) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`${endpoint}/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete item');
+      }
+
+      const result = await response.json();
+
+      // Dispatch custom event to refresh data
+      if (eventName) {
+        window.dispatchEvent(new Event(eventName));
+      }
+
+      return result;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [endpoint, eventName]);
+
+  /**
+   * Bulk delete items
+   */
+  const bulkDelete = useCallback(async (ids) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const results = await Promise.all(
+        ids.map(id => 
+          fetch(`${endpoint}/${id}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }).then(res => {
+            if (!res.ok) {
+              throw new Error(`Failed to delete item ${id}`);
+            }
+            return res.json();
+          })
+        )
+      );
+
+      // Dispatch custom event to refresh data
+      if (eventName) {
+        window.dispatchEvent(new Event(eventName));
+      }
+
+      return results;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [endpoint, eventName]);
+
+  return {
+    create,
+    update,
+    remove,
+    bulkDelete,
+    loading,
+    error,
+  };
+}
+

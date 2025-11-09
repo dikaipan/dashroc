@@ -1,0 +1,1720 @@
+:root{
+  --bg-1: #071029;
+  --bg-2: linear-gradient(180deg,#071029 0%, #0b1830 100%);
+  --card-bg: rgba(255,255,255,0.04);
+  --muted: rgba(255,255,255,0.6);
+  /* Modern vibrant accent colors for dark mode */
+  --accent: #60a5fa;
+  --accent-2: #a78bfa;
+  --accent-3: #34d399;
+  --accent-gradient: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #34d399 100%);
+  --accent-glow: rgba(96, 165, 250, 0.3);
+  --glass: rgba(255,255,255,0.03);
+  --shadow: 0 8px 30px rgba(2,6,23,0.6);
+  --radius: 14px;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color-scheme: dark;
+  letter-spacing: -0.01em;
+  line-height: 1.6;
+}
+
+/* Light Theme Variables */
+html.light-theme,
+.light-theme{
+  --bg-1: #f8fafc !important;
+  --bg-2: linear-gradient(180deg,#f8fafc 0%, #f1f5f9 100%) !important;
+  --card-bg: rgba(0,0,0,0.02) !important;
+  --muted: #1e293b !important;
+  --text: #0f172a !important;
+  /* Modern vibrant accent colors for light mode */
+  --accent: #2563eb !important;
+  --accent-2: #7c3aed !important;
+  --accent-3: #059669 !important;
+  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #059669 100%) !important;
+  --accent-glow: rgba(37, 99, 235, 0.2) !important;
+  --glass: rgba(0,0,0,0.03) !important;
+  --shadow: 0 8px 30px rgba(0,0,0,0.1) !important;
+  --radius: 14px !important;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial !important;
+  color-scheme: light !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.6 !important;
+}
+
+/* EXTREME TEST - Light theme should be OBVIOUS */
+html.light-theme,
+html.light-theme body {
+  background: #f8fafc !important;
+  background-image: none !important;
+}
+
+/* Light theme text colors - UNIVERSAL OVERRIDE (with exceptions) */
+html.light-theme,
+html.light-theme body {
+  color: #1e293b !important;
+}
+
+/* Force all text to be dark in light mode - with specific exceptions */
+html.light-theme div,
+html.light-theme span,
+html.light-theme p,
+html.light-theme li,
+html.light-theme td,
+html.light-theme th,
+html.light-theme label,
+html.light-theme small {
+  color: #0f172a !important;
+}
+
+/* But keep colored text elements as they are */
+html.light-theme [class*="text-blue"],
+html.light-theme [class*="text-green"],
+html.light-theme [class*="text-red"],
+html.light-theme [class*="text-yellow"],
+html.light-theme [class*="text-purple"],
+html.light-theme [class*="text-cyan"],
+html.light-theme [class*="text-pink"],
+html.light-theme [class*="text-orange"],
+html.light-theme [class*="text-indigo"],
+html.light-theme button[class*="text-"],
+html.light-theme a[class*="text-"] {
+  color: inherit !important;
+}
+
+/* Override all slate text colors in light mode */
+html.light-theme .text-slate-100,
+html.light-theme .text-slate-200,
+html.light-theme .text-slate-300,
+html.light-theme .text-white,
+html.light-theme h1,
+html.light-theme h2,
+html.light-theme h3,
+html.light-theme h4,
+html.light-theme h5,
+html.light-theme h6,
+html.light-theme p,
+html.light-theme span,
+html.light-theme div,
+html.light-theme label {
+  color: #0f172a !important;
+}
+
+html.light-theme .text-slate-400,
+html.light-theme .text-slate-500 {
+  color: #475569 !important;
+}
+
+html.light-theme .text-slate-600 {
+  color: #64748b !important;
+}
+
+html.light-theme .text-slate-700 {
+  color: #334155 !important;
+}
+
+html.light-theme .text-slate-800 {
+  color: #1e293b !important;
+}
+
+html.light-theme .text-slate-900 {
+  color: #0f172a !important;
+}
+
+/* Force all text elements to be dark in light mode */
+html.light-theme .content-area,
+html.light-theme .main-area,
+html.light-theme .app-root,
+html.light-theme main,
+html.light-theme section,
+html.light-theme article {
+  color: #0f172a !important;
+}
+
+/* ULTIMATE FIX: Force all text inside main content to be dark */
+html.light-theme .content-area *,
+html.light-theme .main-area *,
+html.light-theme main *,
+html.light-theme section *,
+html.light-theme article * {
+  color: #0f172a !important;
+}
+
+/* But preserve colored elements and buttons */
+html.light-theme .content-area [class*="text-blue"],
+html.light-theme .content-area [class*="text-green"],
+html.light-theme .content-area [class*="text-red"],
+html.light-theme .content-area [class*="text-yellow"],
+html.light-theme .content-area [class*="text-purple"],
+html.light-theme .content-area [class*="text-cyan"],
+html.light-theme .content-area [class*="text-pink"],
+html.light-theme .content-area [class*="text-orange"],
+html.light-theme .content-area [class*="text-indigo"],
+html.light-theme .content-area button[class*="bg-"],
+html.light-theme .content-area a[class*="bg-"],
+html.light-theme .content-area button:not([class*="text-slate"]):not([class*="text-white"]),
+html.light-theme .content-area a:not([class*="text-slate"]):not([class*="text-white"]) {
+  color: inherit !important;
+}
+
+/* Debug: Force light theme styles - using html.light-theme */
+html.light-theme body {
+  background: #f8fafc !important;
+  color: #1e293b !important;
+}
+
+html.light-theme .sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid #e2e8f0 !important;
+}
+
+html.light-theme .nav-btn {
+  color: #1e293b !important;
+}
+
+html.light-theme .nav-btn.active {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+html.light-theme .logo {
+  color: #0f172a !important;
+}
+
+/* Light theme backgrounds - UNIVERSAL */
+html.light-theme .bg-slate-800,
+html.light-theme .bg-slate-900,
+html.light-theme [class*="bg-slate-800"],
+html.light-theme [class*="bg-slate-900"] {
+  background-color: #ffffff !important;
+}
+
+html.light-theme .bg-slate-700,
+html.light-theme [class*="bg-slate-700"] {
+  background-color: #f1f5f9 !important;
+}
+
+html.light-theme .bg-slate-800\/40,
+html.light-theme .bg-slate-800\/50,
+html.light-theme [class*="bg-slate-800/40"],
+html.light-theme [class*="bg-slate-800/50"] {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+html.light-theme .bg-slate-900\/40,
+html.light-theme [class*="bg-slate-900/40"] {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Force all dark backgrounds to be light in light mode */
+html.light-theme [class*="bg-slate"]:not([class*="text-"]):not([class*="border-"]) {
+  background-color: #ffffff !important;
+}
+
+/* Light theme borders - UNIVERSAL */
+html.light-theme .border-slate-700,
+html.light-theme .border-slate-700\/30,
+html.light-theme .border-slate-700\/50,
+html.light-theme [class*="border-slate-700"] {
+  border-color: #e2e8f0 !important;
+}
+
+html.light-theme .border-slate-600,
+html.light-theme [class*="border-slate-600"] {
+  border-color: #cbd5e1 !important;
+}
+
+html.light-theme [class*="border-slate"] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Light theme inputs - UNIVERSAL */
+html.light-theme input,
+html.light-theme textarea,
+html.light-theme select,
+html.light-theme [type="text"],
+html.light-theme [type="number"],
+html.light-theme [type="email"],
+html.light-theme [type="password"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.light-theme input::placeholder,
+html.light-theme textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Light theme tables - UNIVERSAL */
+html.light-theme table,
+html.light-theme thead,
+html.light-theme tbody,
+html.light-theme tfoot {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.light-theme th,
+html.light-theme thead th,
+html.light-theme thead td {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light-theme td,
+html.light-theme tbody td {
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+html.light-theme tr:hover,
+html.light-theme tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Light theme modals - UNIVERSAL with vibrant borders */
+html.light-theme .bg-slate-900,
+html.light-theme [class*="modal"],
+html.light-theme [class*="Modal"] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Enhanced modal borders with accent gradient */
+html.light-theme [class*="border-slate-700"][class*="modal"],
+html.light-theme [class*="Modal"][class*="border"] {
+  border: 2px solid transparent !important;
+  background-image: linear-gradient(#ffffff, #ffffff), linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #059669 100%) !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.15) !important;
+}
+
+/* Dark mode modal borders - vibrant gradient */
+[class*="border-slate-700"][class*="modal"]:not(html.light-theme),
+[class*="Modal"][class*="border"]:not(html.light-theme) {
+  border: 2px solid transparent !important;
+  background-image: linear-gradient(var(--card-bg, rgba(15, 23, 42, 0.95)), var(--card-bg, rgba(15, 23, 42, 0.95))), linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #34d399 100%) !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  box-shadow: 0 8px 24px rgba(96, 165, 250, 0.25) !important;
+}
+
+html.light-theme .bg-slate-800,
+html.light-theme [class*="bg-slate-800"] {
+  background-color: #f8fafc !important;
+}
+
+/* Light theme cards - UNIVERSAL */
+html.light-theme .bg-slate-800\/50,
+html.light-theme [class*="card"],
+html.light-theme [class*="Card"] {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: #0f172a !important;
+}
+
+/* Light theme sidebar bottom */
+html.light-theme .sidebar-bottom {
+  color: #64748b !important;
+}
+
+/* Light theme leaflet popup */
+html.light-theme .leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light-theme .leaflet-popup-tip {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light-theme .leaflet-popup-close-button {
+  color: #64748b !important;
+}
+
+html.light-theme .leaflet-popup-close-button:hover {
+  color: #ef4444 !important;
+}
+
+html.light-theme .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #64748b !important;
+}
+
+/* Light theme card body */
+html.light-theme .card-body {
+  color: #64748b !important;
+}
+
+/* Light theme page title */
+html.light-theme .page-title {
+  color: var(--accent) !important;
+}
+
+/* Light theme search input */
+html.light-theme .search-input {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Light theme header */
+html.light-theme .header {
+  background: linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.3)) !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Elegant typography */
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Numbers and stats */
+.text-2xl, .text-3xl, .text-4xl {
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body{
+  margin:0;
+  min-height:100%;
+  background: var(--bg-1);
+  background-image: radial-gradient( circle at 10% 10%, rgba(79,195,247,0.03), transparent 10%),
+                    radial-gradient( circle at 90% 80%, rgba(123,97,255,0.025), transparent 10% );
+  color:#e6eef8;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  font-size:14px;
+}
+
+/* app root layout */
+.app-root{
+  display:flex;
+  min-height:100vh;
+  gap:24px;
+  align-items:flex-start;
+}
+
+/* Mobile Header Bar */
+.mobile-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.9));
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 1000;
+  backdrop-filter: blur(15px);
+}
+
+.mobile-logo {
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+}
+
+.mobile-logo-icon {
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, rgba(79,195,247,0.1), rgba(123,97,255,0.1));
+  border-radius: 8px;
+  border: 1px solid rgba(79,195,247,0.2);
+  flex-shrink: 0;
+}
+
+.mobile-menu-toggle {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  transition: all 0.3s ease, opacity 0.3s ease;
+  padding: 0;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.mobile-menu-toggle:hover {
+  color: white;
+  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.3);
+  transform: scale(1.05);
+}
+
+/* Light theme mobile header */
+html.light-theme,
+html.light-theme select,
+html.light-theme input {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #1e293b !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+html.light-theme .mobile-header {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light-theme .mobile-logo-icon {
+  background: rgba(2, 132, 199, 0.1) !important;
+  color: #0284c7 !important;
+  border: 1px solid rgba(2, 132, 199, 0.2) !important;
+}
+
+.light-theme .mobile-menu-toggle {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #1e293b !important;
+}
+
+.light-theme .mobile-menu-toggle:hover {
+  background: rgba(0, 0, 0, 0.1) !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  color: #0f172a !important;
+}
+
+/* Mobile Overlay */
+.mobile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  backdrop-filter: blur(2px);
+}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;
+  min-width:220px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.9));
+  backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(255,255,255,0.1);
+  padding:28px 18px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+  box-shadow: 10px 0 30px rgba(2,6,23,0.6);
+  border-radius: 0 16px 16px 0; /* Rounded di kanan */
+  position:sticky;
+  top:20px;
+  height: calc(100vh - 40px);
+  max-height: calc(100vh - 40px);
+  align-self:flex-start;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.logo{
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-weight:700;
+  font-size:17px;
+  letter-spacing:0.5px;
+  color:var(--accent);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logo-icon{
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-weight:700;
+  font-size:16px;
+  letter-spacing:0.5px;
+  color:var(--accent);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, rgba(79,195,247,0.1), rgba(123,97,255,0.1));
+  border-radius: 8px;
+  border: 1px solid rgba(79,195,247,0.2);
+  flex-shrink: 0;
+}
+
+.sidebar-nav{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:6px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.nav-btn{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background: transparent;
+  border: none;
+  color:var(--muted);
+  padding:10px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  transition:all .18s ease;
+  text-align:left;
+  font-weight:500;
+  letter-spacing: -0.01em;
+  width: 100%;
+}
+
+.nav-btn .icon{
+  opacity: 0.85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  transition: all 0.18s ease;
+}
+
+.nav-btn:hover{
+  background: linear-gradient(90deg, rgba(127,220,255,0.04), rgba(150,120,255,0.03));
+  color: white;
+  transform: translateX(6px);
+}
+
+html.light-theme .nav-btn:hover {
+  background: linear-gradient(90deg, rgba(2,132,199,0.08), rgba(124,58,237,0.06));
+  color: #0f172a;
+}
+
+.nav-btn:hover .icon{
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.nav-btn.active{
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  color: white;
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(79,195,247,0.2);
+}
+
+.nav-btn.active .icon{
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Leaflet Map Fixes - Modern Dark Theme */
+.leaflet-container {
+  background: #0f172a !important;
+  border-radius: 16px;
+  font-family: 'Inter', 'Poppins', sans-serif;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Fix: Leaflet map z-index harus lebih rendah dari modal */
+.leaflet-pane,
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane,
+.leaflet-marker-pane,
+.leaflet-tooltip-pane,
+.leaflet-popup-pane {
+  z-index: 1 !important;
+}
+
+/* Ketika modal dibuka, pastikan map tidak muncul di atas */
+.map-container-modal-open .leaflet-container,
+.map-container-modal-open .leaflet-pane,
+.map-container-modal-open .leaflet-tile-pane,
+.map-container-modal-open .leaflet-overlay-pane,
+.map-container-modal-open .leaflet-shadow-pane,
+.map-container-modal-open .leaflet-marker-pane,
+.map-container-modal-open .leaflet-tooltip-pane,
+.map-container-modal-open .leaflet-popup-pane {
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
+/* Pastikan popup dan tooltip juga tidak muncul di atas modal */
+.leaflet-popup,
+.leaflet-tooltip {
+  z-index: 10 !important;
+}
+
+/* Modal harus selalu di atas map - menggunakan !important untuk memastikan */
+.fixed.inset-0.z-50,
+.fixed.inset-0[class*="z-50"],
+div[style*="zIndex: 9999"],
+div[style*="z-index: 9999"],
+div[style*="zIndex: 50"],
+div[style*="z-index: 50"] {
+  z-index: 9999 !important;
+}
+
+/* Pastikan semua modal overlay berada di atas map */
+.fixed.inset-0.bg-black,
+.fixed.inset-0.bg-black\/50,
+.fixed.inset-0.bg-black\/80,
+.fixed.inset-0.bg-black\/90 {
+  z-index: 9998 !important;
+}
+
+/* Hide default zoom control */
+.leaflet-control-zoom {
+  display: none !important;
+  z-index: 1 !important;
+}
+
+/* Leaflet controls harus memiliki z-index yang lebih rendah */
+.leaflet-control {
+  z-index: 100 !important;
+}
+
+.leaflet-control-attribution {
+  z-index: 100 !important;
+}
+
+/* Custom Popup Styling */
+.leaflet-popup-content-wrapper {
+  background: transparent !important;
+  border-radius: 14px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3) !important;
+  padding: 0 !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+
+.leaflet-popup-tip {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  font-size: 20px !important;
+  padding: 8px 12px !important;
+  font-weight: bold !important;
+  transition: all 0.2s ease !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #ef4444 !important;
+  transform: scale(1.1) !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-radius: 6px !important;
+}
+
+/* Custom Tooltip Styling */
+.leaflet-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+  display: none !important;
+}
+
+/* Custom Map Tooltip - Ensure rounded corners */
+.custom-map-tooltip {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.custom-map-tooltip .leaflet-tooltip-content-wrapper {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.custom-map-tooltip .leaflet-tooltip-content {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Tooltip hover effect - perbesar text saat hover */
+.tooltip-hover-text {
+  transition: transform 0.2s ease !important;
+}
+
+.leaflet-marker-icon:hover + div .tooltip-hover-text {
+  transform: scale(1.15) !important;
+}
+
+/* Map Tile Layer Styling */
+.leaflet-tile-pane {
+  filter: brightness(0.9) contrast(1.1) !important;
+}
+
+/* Marker Cluster Styling (if used) */
+.leaflet-marker-icon {
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4)) !important;
+  transition: filter 0.2s ease !important;
+}
+
+.leaflet-marker-icon:hover {
+  filter: drop-shadow(0 4px 8px rgba(59, 130, 246, 0.5)) !important;
+  cursor: pointer !important;
+}
+
+/* Attribution Styling */
+.leaflet-control-attribution {
+  background: rgba(15, 23, 42, 0.8) !important;
+  color: #64748b !important;
+  border-radius: 8px !important;
+  padding: 4px 8px !important;
+  font-size: 10px !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.leaflet-control-attribution a {
+  color: #3b82f6 !important;
+}
+
+/* Theme Toggle Container */
+.sidebar-theme-toggle {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+/* bottom small text */
+.sidebar-bottom{
+  flex-shrink: 0;
+  margin-top: auto;
+  color:rgba(255,255,255,0.35);
+  font-size:12px;
+  text-align: center;
+  padding-top: 8px;
+}
+
+/* MAIN AREA */
+.main-area{
+  flex:1;
+  padding:28px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+
+/* header */
+.header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+  padding:12px 16px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.02);
+  align-self:stretch;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.5);
+}
+
+.search-box{flex:1; max-width:720px}
+.search-input{
+  width:100%;
+  padding:10px 14px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.03);
+  background: rgba(255,255,255,0.02);
+  color:inherit;
+}
+
+/* === ANIMATIONS === */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Shimmer Animation for Loading States */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite;
+}
+
+/* content area */
+.content-area{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+
+/* title */
+.page-title{
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-size:14px;
+  font-weight:600;
+  color:var(--accent);
+  letter-spacing:0.5px;
+}
+
+/* PANELS GRID - MOVED TO INDEX.CSS TO AVOID CONFLICTS */
+/* Grid styling is now handled by index.css */
+
+/* KPI Cards - MOVED TO INDEX.CSS */
+/* Dashboard now uses kpi-card-large, card-wide, card-small from index.css */
+
+/* responsive */
+@media (max-width:1100px){
+  .kpi-card{ grid-column: span 6 }
+  .card-wide{ grid-column: span 12 }
+  .sidebar{ 
+    position:fixed; 
+    left:0; 
+    top:0; 
+    height:100vh; 
+    max-height: 100vh;
+    z-index:40; 
+    transform: translateX(0); 
+    transition: transform .25s;
+    border-radius: 0;
+    padding: 20px 16px;
+  }
+  .app-root{ padding-left:220px }
+  .main-area{ padding:20px; }
+  
+  /* Hide theme toggle and version in tablet view when sidebar is fixed */
+  .sidebar-theme-toggle,
+  .sidebar-bottom {
+    display: block;
+  }
+}
+
+@media (max-width:768px){
+  /* Hide desktop sidebar on mobile */
+  .sidebar:not(.mobile-sidebar) {
+    display: none;
+  }
+  
+  /* Adjust app layout for mobile */
+  .app-root {
+    flex-direction: column;
+    padding: 0;
+    padding-top: 60px; /* Space for mobile header */
+  }
+  
+  .main-area {
+    padding: 16px;
+    width: 100%;
+    margin-top: 0;
+  }
+  
+  .kpi-card { 
+    grid-column: span 12;
+  }
+  
+  /* Mobile sidebar adjustments - TETAP VERTIKAL */
+  .mobile-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 280px !important;
+    min-width: 280px !important;
+    height: 100vh !important;
+    z-index: 1001 !important;
+    padding: 20px 16px;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    border-radius: 0;
+    box-shadow: 10px 0 30px rgba(2,6,23,0.8);
+  }
+  
+  .mobile-sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+  
+  .mobile-sidebar .sidebar-header {
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+  
+  .mobile-sidebar .sidebar-nav {
+    gap: 8px;
+    flex-direction: column !important;
+    flex: 1;
+    overflow-y: auto;
+  }
+  
+  .mobile-sidebar .nav-btn {
+    padding: 12px 16px;
+    font-size: 14px;
+    justify-content: flex-start;
+    width: 100%;
+    white-space: nowrap;
+  }
+  
+  .mobile-sidebar .logo {
+    font-size: 16px;
+  }
+  
+  .mobile-sidebar .sidebar-theme-toggle {
+    flex-shrink: 0;
+    margin-top: auto;
+  }
+  
+  .mobile-sidebar .sidebar-bottom {
+    flex-shrink: 0;
+  }
+  
+  /* Ensure collapsed state doesn't affect mobile sidebar */
+  .mobile-sidebar.collapsed {
+    width: 280px;
+    min-width: 280px;
+    flex-direction: column !important;
+  }
+  
+  .mobile-sidebar.collapsed .sidebar-nav {
+    flex-direction: column !important;
+  }
+  
+  .mobile-sidebar.collapsed .nav-btn span:not(.icon) {
+    display: flex;
+  }
+  
+  .mobile-sidebar.collapsed .nav-btn {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width:480px){
+  .sidebar{
+    padding: 10px 8px;
+    gap: 8px;
+  }
+  .nav-btn{
+    padding: 8px 10px;
+    font-size: 12px;
+    gap: 8px;
+  }
+  .nav-btn .icon{
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+  .logo{
+    font-size: 13px;
+  }
+  .logo-icon{
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+  .sidebar-toggle-btn{
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* small helpers */
+.flex{display:flex}
+.space-between{justify-content:space-between;align-items:center}
+.text-muted{color:var(--muted)}
+.small{font-size:12px}
+
+/* h-underline - MOVED TO INDEX.CSS */
+/* Dashboard now uses h-underline from index.css */
+
+/* card content placeholder sizes (for charts or maps) */
+.card-body{
+  height:220px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:rgba(255,255,255,0.65);
+}
+
+/* misc */
+button{font:inherit}
+
+/* Style tombol toggle di sidebar */
+.sidebar-toggle-btn {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--muted);
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.sidebar-toggle-btn:hover {
+  color: white;
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+  transform: scale(1.05);
+}
+
+.sidebar-toggle-btn:active {
+  transform: scale(0.95);
+  background: rgba(255,255,255,0.05);
+}
+
+/* Saat collapsed, toggle button dan logo icon harus sejajar */
+.sidebar.collapsed .sidebar-header {
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 16px;
+}
+
+.sidebar.collapsed .sidebar-toggle-btn {
+  width: 100%;
+  max-width: 40px;
+}
+
+/* collapsed sidebar */
+.sidebar.collapsed{
+  width:72px;
+  min-width:72px;
+  padding-left:12px;
+  padding-right:12px;
+  border-radius: 0 16px 16px 0; /* Tetap rounded di kanan saat collapsed */
+}
+.sidebar.collapsed .nav-btn span:not(.icon){display:none}
+.sidebar.collapsed .nav-btn{
+  justify-content: center;
+  padding: 10px;
+}
+.sidebar.collapsed .nav-btn .icon{
+  margin: 0;
+}
+.sidebar.collapsed .logo-icon{
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+}
+.sidebar.collapsed .sidebar-theme-toggle{
+  padding: 0;
+}
+.sidebar.collapsed .sidebar-bottom{
+  font-size: 10px;
+}
+.app-root.sidebar-collapsed .main-area{padding-left:20px}
+
+/* Responsive collapsed sidebar */
+@media (max-width:1100px){
+  .sidebar.collapsed{
+    width: 72px;
+  }
+}
+
+@media (max-width:720px){
+  .sidebar.collapsed{
+    width: auto;
+    min-width: auto;
+  }
+  .sidebar.collapsed .sidebar-nav{
+    flex-direction: row;
+  }
+}
+
+/* header toggle */
+.icon-btn{
+  background: linear-gradient(90deg, rgba(127,220,255,0.03), rgba(150,120,255,0.02));
+  border:1px solid rgba(255,255,255,0.03);
+  padding:8px 10px;
+  border-radius:8px;
+  cursor:pointer;
+  color:inherit;
+  font-weight:700;
+}
+
+/* data table styles */
+.data-table th{ color: rgba(255,255,255,0.75); font-weight:700; font-size:12px; border-bottom:1px solid rgba(255,255,255,0.03)}
+.data-table td{ color: rgba(255,255,255,0.85); font-size:13px}
+/* Fix khusus untuk map agar tampil penuh */
+.map-wrapper {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-container {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.card-wide {
+  display: flex;
+  flex-direction: column;
+  justify-content: stretch;
+  align-items: stretch;
+  height: 100%;
+}
+
+.mb-6{
+  margin-bottom:1rem;
+}
+
+/* KPI Card Typography - Bigger and Bolder */
+.bg-gradient-to-br .text-sm {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+}
+
+.bg-gradient-to-br .text-2xl {
+  font-size: 2.5rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.bg-gradient-to-br .text-xs {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+/* ========================================
+   DASHBOARD LIGHT MODE OVERRIDES
+   ======================================== */
+
+html.light-theme .bg-gradient-to-br,
+html.light-theme [class*="bg-gradient"] {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light-theme .bg-gradient-to-br .text-sm,
+html.light-theme .bg-gradient-to-br .text-2xl,
+html.light-theme .bg-gradient-to-br .text-xs,
+html.light-theme .bg-gradient-to-br p,
+html.light-theme .bg-gradient-to-br h3 {
+  color: #1e293b !important;
+}
+
+html.light-theme .bg-gradient-to-br button {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #1e293b !important;
+}
+
+html.light-theme .bg-gradient-to-br button:hover {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ========================================
+   COLORFUL KPI CARDS - LIGHT MODE
+   ======================================== */
+
+/* Blue KPI Card - Enhanced vibrant gradient */
+html.light-theme [class*="from-blue"],
+html.light-theme [class*="via-blue"],
+html.light-theme [class*="to-blue"],
+html.light-theme [class*="to-indigo"] {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #c7d2fe 100%) !important;
+  border-color: #60a5fa !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15) !important;
+}
+
+/* Green KPI Card - Enhanced vibrant gradient */
+html.light-theme [class*="from-green"],
+html.light-theme [class*="from-emerald"],
+html.light-theme [class*="via-green"],
+html.light-theme [class*="to-green"],
+html.light-theme [class*="to-teal"] {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 50%, #6ee7b7 100%) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15) !important;
+}
+
+/* Purple KPI Card - Enhanced vibrant gradient */
+html.light-theme [class*="from-purple"],
+html.light-theme [class*="via-purple"],
+html.light-theme [class*="to-purple"],
+html.light-theme [class*="to-pink"] {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 50%, #fce7f3 100%) !important;
+  border-color: #a855f7 !important;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15) !important;
+}
+
+/* Orange KPI Card - Enhanced vibrant gradient */
+html.light-theme [class*="from-orange"],
+html.light-theme [class*="via-amber"],
+html.light-theme [class*="to-orange"],
+html.light-theme [class*="to-yellow"] {
+  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 50%, #fcd34d 100%) !important;
+  border-color: #f97316 !important;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15) !important;
+}
+
+/* Pink KPI Card - Enhanced vibrant gradient */
+html.light-theme [class*="from-pink"],
+html.light-theme [class*="via-rose"],
+html.light-theme [class*="to-pink"],
+html.light-theme [class*="to-fuchsia"] {
+  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 50%, #f9a8d4 100%) !important;
+  border-color: #ec4899 !important;
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15) !important;
+}
+
+/* Cyan KPI Card - Enhanced vibrant gradient */
+html.light-theme [class*="from-cyan"],
+html.light-theme [class*="via-blue"],
+html.light-theme [class*="to-cyan"],
+html.light-theme [class*="to-teal"] {
+  background: linear-gradient(135deg, #cffafe 0%, #a5f3fc 50%, #67e8f9 100%) !important;
+  border-color: #06b6d4 !important;
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.15) !important;
+}
+
+/* Yellow KPI Card - Enhanced vibrant gradient */
+html.light-theme [class*="from-yellow"],
+html.light-theme [class*="via-amber"],
+html.light-theme [class*="to-yellow"],
+html.light-theme [class*="to-orange"] {
+  background: linear-gradient(135deg, #fef9c3 0%, #fef08a 50%, #fde047 100%) !important;
+  border-color: #eab308 !important;
+  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.15) !important;
+}
+
+/* Red KPI Card - Enhanced vibrant gradient */
+html.light-theme [class*="from-red"],
+html.light-theme [class*="via-rose"],
+html.light-theme [class*="to-red"],
+html.light-theme [class*="to-pink"] {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 50%, #fca5a5 100%) !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15) !important;
+}
+
+/* Indigo KPI Card - Enhanced vibrant gradient */
+html.light-theme [class*="from-indigo"],
+html.light-theme [class*="via-blue"],
+html.light-theme [class*="to-indigo"],
+html.light-theme [class*="to-purple"] {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 50%, #a5b4fc 100%) !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* ========================================
+   TOOLTIPS & HOVER - LIGHT MODE
+   ======================================== */
+
+/* Recharts Tooltips */
+html.light-theme .recharts-tooltip-wrapper {
+  filter: none !important;
+}
+
+html.light-theme .recharts-default-tooltip {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+html.light-theme .recharts-tooltip-label {
+  color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .recharts-tooltip-item {
+  color: #1e293b !important;
+}
+
+/* Chart axis labels and ticks - dark for light mode */
+html.light-theme .recharts-cartesian-axis-tick text,
+html.light-theme .recharts-text,
+html.light-theme .recharts-label {
+  fill: #1e293b !important;
+  font-weight: 500 !important;
+}
+
+html.light-theme .recharts-cartesian-axis-line,
+html.light-theme .recharts-cartesian-axis-tick-line {
+  stroke: #64748b !important;
+}
+
+html.light-theme .recharts-cartesian-grid-horizontal line,
+html.light-theme .recharts-cartesian-grid-vertical line {
+  stroke: #cbd5e1 !important;
+}
+
+/* Table hover states */
+html.light-theme tr:hover {
+  background: rgba(59, 130, 246, 0.08) !important;
+}
+
+/* Tooltip elements */
+html.light-theme [role="tooltip"],
+html.light-theme .tooltip {
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: #1e293b !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ========================================
+   PROGRESS BARS - CONTRASTING COLORS
+   ======================================== */
+
+/* Progress bars inside cards - vibrant contrasting colors for light mode */
+
+/* Green card progress bars - vibrant purple gradient */
+html.light-theme .from-green-500,
+html.light-theme .from-green-400,
+html.light-theme .from-emerald-500,
+html.light-theme .bg-gradient-to-r.from-green-500 {
+  background: linear-gradient(90deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%) !important;
+}
+
+/* Blue card progress bars - vibrant orange gradient */
+html.light-theme .from-blue-500,
+html.light-theme .from-blue-400,
+html.light-theme .bg-gradient-to-r.from-blue-500 {
+  background: linear-gradient(90deg, #ea580c 0%, #f97316 50%, #fb923c 100%) !important;
+}
+
+/* Purple card progress bars - vibrant teal gradient */
+html.light-theme .from-purple-500,
+html.light-theme .from-purple-400,
+html.light-theme .bg-gradient-to-r.from-purple-500 {
+  background: linear-gradient(90deg, #059669 0%, #10b981 50%, #34d399 100%) !important;
+}
+
+/* Orange card progress bars - vibrant blue gradient */
+html.light-theme .from-orange-500,
+html.light-theme .from-orange-400,
+html.light-theme .bg-gradient-to-r.from-orange-500 {
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%) !important;
+}
+
+/* Pink card progress bars - vibrant cyan gradient */
+html.light-theme .from-pink-500,
+html.light-theme .from-pink-400,
+html.light-theme .bg-gradient-to-r.from-pink-500 {
+  background: linear-gradient(90deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%) !important;
+}
+
+/* Cyan card progress bars - vibrant pink gradient */
+html.light-theme .from-cyan-500,
+html.light-theme .from-cyan-400,
+html.light-theme .bg-gradient-to-r.from-cyan-500 {
+  background: linear-gradient(90deg, #db2777 0%, #ec4899 50%, #f472b6 100%) !important;
+}
+
+/* Yellow card progress bars - vibrant indigo gradient */
+html.light-theme .from-yellow-500,
+html.light-theme .from-yellow-400,
+html.light-theme .bg-gradient-to-r.from-yellow-500 {
+  background: linear-gradient(90deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%) !important;
+}
+
+/* Red card progress bars - vibrant green gradient */
+html.light-theme .from-red-500,
+html.light-theme .from-red-400,
+html.light-theme .bg-gradient-to-r.from-red-500 {
+  background: linear-gradient(90deg, #059669 0%, #10b981 50%, #34d399 100%) !important;
+}
+
+/* Slate/Gray progress bars - vibrant blue gradient */
+html.light-theme .from-slate-400,
+html.light-theme .from-slate-500,
+html.light-theme .bg-gradient-to-r.from-slate-400,
+html.light-theme .bg-gradient-to-r.from-slate-500 {
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%) !important;
+}
+
+/* ========================================
+   MULTI-COLOR PROGRESS BARS
+   Different colors for ranking bars
+   ======================================== */
+
+/* First bar - Blue */
+html.light-theme .from-orange-400.to-orange-300 {
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%) !important;
+}
+
+/* Second bar - Purple */
+html.light-theme .from-orange-500.to-orange-400 {
+  background: linear-gradient(90deg, #a855f7 0%, #c084fc 100%) !important;
+}
+
+/* Third bar - Teal */
+html.light-theme .from-orange-600.to-orange-500 {
+  background: linear-gradient(90deg, #14b8a6 0%, #2dd4bf 100%) !important;
+}
+
+/* ========================================
+   ROUNDED BOXES - SOFTER DESIGN
+   ======================================== */
+
+/* All alert boxes and badges */
+.bg-red-500\/20,
+.bg-orange-500\/20,
+.bg-yellow-500\/20,
+.bg-purple-500\/20,
+.bg-green-500\/20,
+.bg-blue-500\/20,
+[class*="bg-red-"],
+[class*="bg-orange-"],
+[class*="bg-yellow-"],
+[class*="bg-purple-"],
+[class*="bg-green-"],
+[class*="bg-blue-"],
+[class*="bg-slate-"] {
+  border-radius: 12px !important;
+}
+
+/* Progress bar containers */
+.bg-slate-700,
+.bg-slate-700\/50,
+[class*="bg-slate-7"] {
+  border-radius: 16px !important;
+}
+
+/* Progress bars themselves */
+.h-2,
+.h-3,
+.h-3\.5,
+[class*="h-full"] {
+  border-radius: 16px !important;
+}
+
+/* Small info boxes */
+.p-2,
+.p-2\.5,
+.p-3,
+[class*="p-2"],
+[class*="p-3"] {
+  border-radius: 14px !important;
+}
+
+/* Badge elements */
+.px-2,
+.px-3,
+[class*="rounded"] {
+  border-radius: 10px !important;
+}
+
+/* Cards themselves */
+.rounded-xl,
+.rounded-lg,
+[class*="rounded-"] {
+  border-radius: 18px !important;
+}
+
+/* Buttons */
+button {
+  border-radius: 12px !important;
+}
+
+/* Input fields */
+input,
+select,
+textarea {
+  border-radius: 12px !important;
+}
+
+/* Recharts bars - vibrant colors for light mode */
+html.light-theme .recharts-bar-rectangle path {
+  fill: #2563eb !important;
+  opacity: 1 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#3b82f6"],
+html.light-theme .recharts-bar path[fill="#60a5fa"] {
+  fill: #2563eb !important;
+}
+
+html.light-theme .recharts-bar path[fill="#10b981"],
+html.light-theme .recharts-bar path[fill="#34d399"] {
+  fill: #059669 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#8b5cf6"],
+html.light-theme .recharts-bar path[fill="#a78bfa"] {
+  fill: #7c3aed !important;
+}
+
+html.light-theme .recharts-bar path[fill="#f59e0b"],
+html.light-theme .recharts-bar path[fill="#fbbf24"] {
+  fill: #d97706 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#06b6d4"],
+html.light-theme .recharts-bar path[fill="#22d3ee"] {
+  fill: #0891b2 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#ec4899"],
+html.light-theme .recharts-bar path[fill="#f472b6"] {
+  fill: #db2777 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#ef4444"],
+html.light-theme .recharts-bar path[fill="#f87171"] {
+  fill: #dc2626 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#f97316"],
+html.light-theme .recharts-bar path[fill="#fb923c"] {
+  fill: #ea580c !important;
+}
+
+html.light-theme .recharts-bar path[fill="#6366f1"],
+html.light-theme .recharts-bar path[fill="#818cf8"] {
+  fill: #4f46e5 !important;
+}
+
+/* ========================================
+   KPI CARD TEXT COLORS - LIGHT MODE
+   ======================================== */
+
+/* All text inside gradient cards should be dark */
+html.light-theme .bg-gradient-to-br p,
+html.light-theme .bg-gradient-to-br h3,
+html.light-theme .bg-gradient-to-br h2,
+html.light-theme .bg-gradient-to-br span,
+html.light-theme .bg-gradient-to-br div {
+  color: #0f172a !important;
+}
+
+/* Specific text color overrides */
+html.light-theme .text-slate-100,
+html.light-theme .text-slate-200,
+html.light-theme .text-slate-300 {
+  color: #0f172a !important;
+}
+
+/* Status colors in light mode */
+html.light-theme .text-green-400,
+html.light-theme .text-green-300 {
+  color: #15803d !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-yellow-400,
+html.light-theme .text-yellow-300 {
+  color: #a16207 !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-red-400,
+html.light-theme .text-red-300 {
+  color: #b91c1c !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-blue-400,
+html.light-theme .text-blue-300 {
+  color: #1d4ed8 !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-purple-400,
+html.light-theme .text-purple-300 {
+  color: #7e22ce !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-orange-400,
+html.light-theme .text-orange-300 {
+  color: #c2410c !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-pink-400,
+html.light-theme .text-pink-300 {
+  color: #be185d !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-cyan-400,
+html.light-theme .text-cyan-300 {
+  color: #0e7490 !important;
+  font-weight: 600 !important;
+}

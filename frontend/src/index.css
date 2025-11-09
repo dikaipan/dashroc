@@ -1,0 +1,150 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; }
+
+/* Theme System */
+.dark-theme {
+  color-scheme: dark;
+}
+
+.light-theme {
+  color-scheme: light;
+}
+
+/* Light theme overrides */
+.light-theme {
+  --bg-primary: #f9fafb;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --border-color: #e5e7eb;
+}
+
+/* Dark theme (default) */
+.dark-theme {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border-color: #475569;
+}
+
+/* Dashboard Grid Layout - Fixed */
+.panels-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 16px;
+}
+
+/* KPI Cards - Fixed sizing */
+.kpi-card-large {
+  grid-column: span 3;
+  @apply bg-slate-800/40 backdrop-blur-sm rounded-xl shadow-card p-6 border border-slate-700/30;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+}
+
+.light-theme .kpi-card-large {
+  @apply bg-white/80 backdrop-blur-sm border-gray-300/50;
+}
+
+.kpi-title-large {
+  @apply text-sm font-medium text-slate-300 mb-2;
+}
+
+.light-theme .kpi-title-large {
+  @apply text-gray-700;
+}
+
+.kpi-value-large {
+  @apply text-3xl font-bold text-white;
+}
+
+.light-theme .kpi-value-large {
+  @apply text-gray-900;
+}
+
+/* Cards - Fixed layout */
+.card-wide {
+  grid-column: span 6;
+  @apply bg-slate-800/40 backdrop-blur-sm rounded-xl shadow-card p-6 border border-slate-700/30;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.light-theme .card-wide {
+  @apply bg-white/80 backdrop-blur-sm border-gray-300/50;
+}
+
+.card-small {
+  grid-column: span 6;
+  @apply bg-slate-800/40 backdrop-blur-sm rounded-xl shadow-card p-6 border border-slate-700/30;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+}
+
+.light-theme .card-small {
+  @apply bg-white/80 backdrop-blur-sm border-gray-300/50;
+}
+
+.h-underline {
+  @apply text-base font-semibold text-white mb-4 pb-2 border-b border-slate-700/50;
+}
+
+.light-theme .h-underline {
+  @apply text-gray-900 border-gray-300;
+}
+
+.shadow-card {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive Grid */
+@media (max-width: 1200px) {
+  .kpi-card-large { grid-column: span 6; }
+  .card-wide { grid-column: span 12; }
+  .card-small { grid-column: span 6; }
+}
+
+@media (max-width: 768px) {
+  .panels-grid { gap: 12px; }
+  .kpi-card-large, .card-wide, .card-small { grid-column: span 12; }
+}
+
+/* Leaflet Map */
+.leaflet-tooltip {
+  background: white;
+  border: 1px solid #ccc;
+  padding: 5px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+.leaflet-container {
+  background: #1e293b !important;
+  border-radius: 8px;
+}
+
+.light-theme .leaflet-container {
+  background: #f1f5f9 !important;
+}
+
+/* Table */
+table, th, td {
+  border: 1px solid #ccc;
+  border-collapse: collapse;
+  padding: 5px;
+}
+
+/* Chart containers */
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.75rem; }
