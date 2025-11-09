@@ -1,3 +1,2 @@
-Flask==3.0.0
-pandas==2.1.4
-openpyxl==3.1.2
+# No external dependencies for initial deployment
+# We'll use built-in Python modules only
