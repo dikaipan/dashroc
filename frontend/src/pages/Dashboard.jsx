@@ -59,62 +59,13 @@ export default function Dashboard() {
   // ============================================================================
   const [category, setCategory] = useState("REGION");
   const [filterValue, setFilterValue] = useState("");
-  const [fullscreenChart, setFullscreenChart] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [showActivationModal, setShowActivationModal] = useState(false);
   const [showWarrantyInsightModal, setShowWarrantyInsightModal] = useState(false);
   const [showExpiringSoonModal, setShowExpiringSoonModal] = useState(false);
-  const [monthlyMachineData, setMonthlyMachineData] = useState([]);
-  const [loadingMonthly, setLoadingMonthly] = useState(true);
-  
-  // Fetch monthly machine data - optimized with debouncing
-  useEffect(() => {
-    const fetchMonthlyData = async () => {
-      try {
-        setLoadingMonthly(true);
-        console.log("[DEBUG] Fetching monthly machine data...");
-        
-        // Fetch data from API
-        const response = await fetch('/api/monthly-machines');
-        
-        console.log("[DEBUG] Response status:", response.status);
-        
-        if (response.ok) {
-          const result = await response.json();
-          console.log("[DEBUG] Received monthly data:", result);
-          console.log("[DEBUG] Data is array:", Array.isArray(result));
-          console.log("[DEBUG] Data length:", result?.length || 0);
-          
-          // API returns array directly, not wrapped in {rows: [...]}
-          const data = Array.isArray(result) ? result : (result.rows || []);
-          
-          console.log("[DEBUG] Processed monthly data:", data.length, 'records');
-          if (data.length > 0) {
-            console.log("[DEBUG] First record:", data[0]);
-          }
-          
-          // Use requestAnimationFrame to batch state updates
-          requestAnimationFrame(() => {
-            setMonthlyMachineData(data);
-          });
-        } else {
-          console.warn('[DEBUG] Monthly machine data not available');
-          setMonthlyMachineData([]);
-        }
-      } catch (error) {
-        console.error('[DEBUG] Error fetching monthly machine data:', error);
-        setMonthlyMachineData([]);
-      } finally {
-        // Defer loading state update to avoid blocking render
-        requestAnimationFrame(() => {
-          setLoadingMonthly(false);
-        });
-      }
-    };
-    
-    // Debounce fetch to avoid rapid calls
-    const timeoutId = setTimeout(fetchMonthlyData, 100);
-    return () => clearTimeout(timeoutId);
-  }, []);
+  // No longer needed - we calculate monthly data from machine instal_date directly
+  // const [monthlyMachineData, setMonthlyMachineData] = useState([]);
+  // const [loadingMonthly, setLoadingMonthly] = useState(true);
   
   // ============================================================================
   // HELPER FUNCTIONS - Pure functions untuk data processing
@@ -765,44 +716,87 @@ export default function Dashboard() {
   }, [filteredMachines]);
   
   /**
-   * monthlyActivationData - Process data aktivasi mesin per bulan
+   * monthlyActivationData - Calculate monthly activations from machine install dates
    * 
-   * Format expected: { month: "Jan", year: 2024, total_activation: 5 }
-   * Convert to chart format: { month: "Jan 2024", count: 5 }
+   * Instead of using monthly-machines.json, we calculate from actual machine data
+   * This is more accurate and doesn't rely on separate monthly aggregation
+   * 
+   * Process:
+   * 1. Parse instal_date from each machine
+   * 2. Group by month-year
+   * 3. Count machines per month
    * 
    * OPTIMIZED: Limit data points to improve chart rendering performance
    */
   const monthlyActivationData = useMemo(() => {
-    if (!monthlyMachineData || monthlyMachineData.length === 0) {
-      console.log("[DEBUG] No monthly machine data available");
+    if (!rows || rows.length === 0) {
+      console.log("[DEBUG] No machine data for monthly activation");
       return [];
     }
     
-    console.log("[DEBUG] Processing monthly activation data, records:", monthlyMachineData.length);
+    console.log("[DEBUG] Calculating monthly activations from", rows.length, "machines");
     
-    const rawData = monthlyMachineData.map(item => {
-      // Handle different field name formats from JSON
-      // JSON uses: "﻿Month", "Year", "Total machine" (with BOM and capitals)
-      const month = item['﻿Month'] || item.Month || item.month || item.bulan || '';
-      const year = item.Year || item.year || new Date().getFullYear();
-      const count = item['Total machine'] || item.total_machine || item.total_activation || 
-                    item.total_aktifasi || item.jumlah || item.count || 0;
+    // Group machines by month-year from instal_date
+    const monthlyGroups = {};
+    
+    rows.forEach(machine => {
+      const instalDate = machine.instal_date || machine.install_date || machine.instalDate;
+      if (!instalDate) return;
       
-      return {
-        month: `${month}/${year}`,
-        count: parseInt(count) || 0
-      };
+      try {
+        // Parse date in format "19-Aug-20" or similar
+        const dateStr = instalDate.trim();
+        const parts = dateStr.split('-');
+        
+        if (parts.length === 3) {
+          const day = parts[0];
+          const monthStr = parts[1]; // "Aug", "Oct", etc
+          const yearShort = parts[2]; // "20", "21", etc
+          
+          // Convert 2-digit year to 4-digit
+          const year = yearShort.length === 2 
+            ? (parseInt(yearShort) >= 50 ? `19${yearShort}` : `20${yearShort}`)
+            : yearShort;
+          
+          // Month mapping
+          const monthMap = {
+            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+            'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+            'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+          };
+          
+          const monthNum = monthMap[monthStr] || '01';
+          const key = `${year}-${monthNum}`;
+          
+          monthlyGroups[key] = (monthlyGroups[key] || 0) + 1;
+        }
+      } catch (error) {
+        // Skip invalid dates
+      }
     });
     
-    console.log("[DEBUG] Processed activation data points:", rawData.length);
+    // Convert to array and sort by date
+    const rawData = Object.entries(monthlyGroups)
+      .map(([key, count]) => {
+        const [year, month] = key.split('-');
+        return {
+          month: `${month}/${year}`,
+          count: count,
+          sortKey: key
+        };
+      })
+      .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+    
+    console.log("[DEBUG] Calculated", rawData.length, "monthly data points");
     if (rawData.length > 0) {
-      console.log("[DEBUG] First data point:", rawData[0]);
-      console.log("[DEBUG] Last data point:", rawData[rawData.length - 1]);
+      console.log("[DEBUG] First activation:", rawData[0]);
+      console.log("[DEBUG] Last activation:", rawData[rawData.length - 1]);
+      console.log("[DEBUG] Total machines counted:", rawData.reduce((sum, d) => sum + d.count, 0));
     }
     
-    // Limit to 36 points (3 years of monthly data) to reduce rendering overhead
-    return limitChartData(rawData, 36, 'sample');
-  }, [monthlyMachineData]);
+    // Return last 36 months (3 years) for performance
+    return rawData.slice(-36);
+  }, [rows]);
   
   /**
    * formatPercentage - Format percentage number to readable string
