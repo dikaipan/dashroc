@@ -2,20 +2,47 @@
   "buildCommand": "echo 'Using pre-built dist folder'",
   "outputDirectory": "frontend/dist",
   "framework": null,
-  "routes": [
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "headers": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1",
-      "headers": {
-        "Content-Type": "application/json"
-      }
+      "source": "/api/(.*).json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/machines",
+      "destination": "/api/machines.json"
     },
     {
-      "handle": "filesystem"
+      "source": "/api/engineers",
+      "destination": "/api/engineers.json"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/api/stock-parts",
+      "destination": "/api/stock-parts.json"
+    },
+    {
+      "source": "/api/fsl-locations",
+      "destination": "/api/fsl-locations.json"
+    },
+    {
+      "source": "/api/monthly-machines",
+      "destination": "/api/monthly-machines.json"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
