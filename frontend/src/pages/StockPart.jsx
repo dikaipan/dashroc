@@ -30,7 +30,7 @@
 // ============================================================================
 
 // React core
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 // Custom hooks untuk data fetching
 import { useStockPartData, useFSLLocationData } from '../hooks/useEngineerData.js';
@@ -196,6 +196,15 @@ export default function StockPart() {
   const { isDark } = useTheme();
   const { rows: stockParts, loading: loadingStock } = useStockPartData();
   const { rows: fslLocations, loading: loadingFSL } = useFSLLocationData();
+  
+  // Debug FSL data loading
+  useEffect(() => {
+    console.log('[StockPart] FSL Locations loaded:', fslLocations?.length || 0, 'items');
+    if (fslLocations && fslLocations.length > 0) {
+      console.log('[StockPart] First FSL:', fslLocations[0]);
+    }
+  }, [fslLocations]);
+  
   const { create, update, remove, loading: crudLoading } = useCrud({
     endpoint: '/api/stock-parts',
     primaryKey: 'part_number',
