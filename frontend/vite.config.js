@@ -16,9 +16,31 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://192.168.1.6:5000',
+        target: 'http://127.0.0.1:5000',
         changeOrigin: true,
-        secure: false
+        secure: false,
+        ws: true, // Enable websocket proxy
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, req, res) => {
+            console.error('[Vite Proxy] Error:', err.message);
+            console.error('[Vite Proxy] Request URL:', req.url);
+            if (res && !res.headersSent) {
+              res.writeHead(500, {
+                'Content-Type': 'application/json'
+              });
+              res.end(JSON.stringify({
+                error: 'Proxy error: Flask server may not be running',
+                message: 'Please ensure Flask server is running on port 5000'
+              }));
+            }
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('[Vite Proxy] Proxying:', req.method, req.url, '-> http://127.0.0.1:5000' + req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('[Vite Proxy] Response:', proxyRes.statusCode, req.url);
+          });
+        }
       }
     },
     historyApiFallback: true,
