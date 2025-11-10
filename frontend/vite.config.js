@@ -28,6 +28,8 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': '/src',
+        'react-router/dist/development': 'react-router/dist/production',
+        'react-router-dom/dist/development': 'react-router-dom/dist/production',
       },
       dedupe: ['react', 'react-dom', 'react-is', 'react-router', 'react-router-dom'], // Ensure single React instance
       preserveSymlinks: false,
