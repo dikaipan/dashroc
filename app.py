@@ -4,6 +4,7 @@ from flask_cors import CORS
 from config import Config
 from backend.routes import register_routes
 import os
+import mimetypes
 
 def create_app() -> Flask:
     """
@@ -16,6 +17,11 @@ def create_app() -> Flask:
     
     app.config.from_object(Config)
     CORS(app)
+    
+    # Ensure correct MIME types for modern JavaScript modules
+    mimetypes.add_type('application/javascript', '.js')
+    mimetypes.add_type('text/css', '.css')
+    mimetypes.add_type('application/json', '.json')
     
     # Register all API routes FIRST (with /api prefix)
     register_routes(app)
@@ -56,11 +62,23 @@ def create_app() -> Flask:
         if path != "":
             file_path = os.path.join(Config.DIST_DIR, path)
             if os.path.exists(file_path) and os.path.isfile(file_path):
-                return send_from_directory(Config.DIST_DIR, path)
+                # Get the correct MIME type for the file
+                mimetype = mimetypes.guess_type(file_path)[0]
+                response = send_from_directory(Config.DIST_DIR, path, mimetype=mimetype)
+                # Cache static assets for 1 year (they have hash-based names, so safe to cache)
+                if path.startswith('assets/'):
+                    response.cache_control.max_age = 31536000  # 1 year
+                    response.cache_control.public = True
+                return response
         
         # For all other requests (SPA routes), return index.html
         # This handles: /, /dashboard, /engineers, /stockpart, etc.
-        return send_from_directory(Config.DIST_DIR, "index.html")
+        response = send_from_directory(Config.DIST_DIR, "index.html")
+        # Disable caching for index.html to ensure fresh builds are served
+        response.cache_control.no_cache = True
+        response.cache_control.no_store = True
+        response.cache_control.must_revalidate = True
+        return response
     
     return app
 

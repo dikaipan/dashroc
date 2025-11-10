@@ -3,6 +3,7 @@
  * Reusable hook for Create, Read, Update, Delete operations
  */
 import { useState, useCallback } from 'react';
+import { batchedDispatchEvent } from '../utils/eventBatching';
 
 /**
  * Generic CRUD hook
@@ -43,7 +44,7 @@ export function useCrud(config) {
 
       // Dispatch custom event to refresh data
       if (eventName) {
-        window.dispatchEvent(new Event(eventName));
+        batchedDispatchEvent(eventName);
       }
 
       return result;
@@ -80,7 +81,7 @@ export function useCrud(config) {
 
       // Dispatch custom event to refresh data
       if (eventName) {
-        window.dispatchEvent(new Event(eventName));
+        batchedDispatchEvent(eventName);
       }
 
       return result;
@@ -116,7 +117,7 @@ export function useCrud(config) {
 
       // Dispatch custom event to refresh data
       if (eventName) {
-        window.dispatchEvent(new Event(eventName));
+        batchedDispatchEvent(eventName);
       }
 
       return result;
@@ -154,7 +155,7 @@ export function useCrud(config) {
 
       // Dispatch custom event to refresh data
       if (eventName) {
-        window.dispatchEvent(new Event(eventName));
+        batchedDispatchEvent(eventName);
       }
 
       return results;

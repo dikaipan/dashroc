@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { NavLink } from 'react-router-dom';
 import { BarChart, Cpu, Users, TrendingUp, Info, Package, GitBranch, Tool, Menu, X } from "react-feather";
 import ThemeToggle from "../common/ThemeToggle";
@@ -9,20 +9,46 @@ const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const resizeTimeoutRef = useRef(null);
+  const lastWidthRef = useRef(typeof window !== 'undefined' ? window.innerWidth : 0);
+
+  const checkMobile = useCallback(() => {
+    const width = window.innerWidth;
+    setIsMobile(width < 768);
+    if (width >= 768) {
+      setIsMobileMenuOpen(false);
+    }
+  }, []);
 
   // Detect mobile screen size
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth >= 768) {
-        setIsMobileMenuOpen(false);
+    checkMobile();
+
+    const handleResize = () => {
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
       }
+
+      resizeTimeoutRef.current = setTimeout(() => {
+        requestAnimationFrame(() => {
+          const width = window.innerWidth;
+          if (Math.abs(width - lastWidthRef.current) < 16) {
+            return;
+          }
+          lastWidthRef.current = width;
+          checkMobile();
+        });
+      }, 200);
     };
 
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => {
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [checkMobile]);
 
   const menuItems = [
     { id: "dashboard", path: "/dashboard", icon: BarChart, label: "Dashboard" },

@@ -325,9 +325,9 @@ const MapWithRegions = React.memo(function MapWithRegions({ machines, engineers 
         clearTimeout(fitBoundsTimeoutRef.current);
       }
       
-      // Debounce fitBounds to batch updates and avoid forced reflow
+      // Increased debounce and use requestIdleCallback for non-critical map updates
       fitBoundsTimeoutRef.current = setTimeout(() => {
-        requestAnimationFrame(() => {
+        const updateBounds = () => {
           const bounds = L.latLngBounds();
           
           Object.values(areaGroupStats).forEach(stat => {
@@ -339,8 +339,18 @@ const MapWithRegions = React.memo(function MapWithRegions({ machines, engineers 
           if (bounds.isValid()) {
             map.fitBounds(bounds, { padding: [50, 50], animate: false });
           }
-        });
-      }, 150);
+        };
+        
+        // Use requestIdleCallback if available, otherwise use RAF with longer delay
+        if (window.requestIdleCallback) {
+          window.requestIdleCallback(updateBounds, { timeout: 500 });
+        } else {
+          // Use double RAF for better batching
+          requestAnimationFrame(() => {
+            requestAnimationFrame(updateBounds);
+          });
+        }
+      }, 300); // Increased from 150ms to 300ms
     }
     
     return () => {

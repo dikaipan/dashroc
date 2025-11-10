@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, Suspense, lazy } from "react";
+import React, { useState, useMemo, useEffect, useCallback, Suspense, lazy, startTransition, useDeferredValue } from "react";
 import { useNavigate } from 'react-router-dom';
 import FilterTabs from "../components/ui/FilterTabs.jsx";
 import { useEngineerData, useMachineData, useStockPartData, useFSLLocationData } from "../hooks/useEngineerData.js";
@@ -59,13 +59,46 @@ export default function Dashboard() {
   // ============================================================================
   const [category, setCategory] = useState("REGION");
   const [filterValue, setFilterValue] = useState("");
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenChart, setFullscreenChart] = useState(null);
   const [showActivationModal, setShowActivationModal] = useState(false);
   const [showWarrantyInsightModal, setShowWarrantyInsightModal] = useState(false);
   const [showExpiringSoonModal, setShowExpiringSoonModal] = useState(false);
-  // No longer needed - we calculate monthly data from machine instal_date directly
-  // const [monthlyMachineData, setMonthlyMachineData] = useState([]);
-  // const [loadingMonthly, setLoadingMonthly] = useState(true);
+  const [monthlyMachineData, setMonthlyMachineData] = useState([]);
+  const [loadingMonthly, setLoadingMonthly] = useState(true);
+  
+  // Defer filter value to reduce re-renders during typing
+  const deferredFilterValue = useDeferredValue(filterValue);
+  
+  // Fetch monthly machine data from API
+  useEffect(() => {
+    const fetchMonthlyData = async () => {
+      try {
+        setLoadingMonthly(true);
+        console.log("[DEBUG] Fetching monthly machine data...");
+        
+        // Fetch data from API
+        const response = await fetch('/api/monthly-machines');
+        
+        console.log("[DEBUG] Response status:", response.status);
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log("[DEBUG] Received data:", result);
+          setMonthlyMachineData(result.rows || []);
+        } else {
+          console.warn('[DEBUG] Monthly machine data not available');
+          setMonthlyMachineData([]);
+        }
+      } catch (error) {
+        console.error('[DEBUG] Error fetching monthly machine data:', error);
+        setMonthlyMachineData([]);
+      } finally {
+        setLoadingMonthly(false);
+      }
+    };
+    
+    fetchMonthlyData();
+  }, []);
   
   // ============================================================================
   // HELPER FUNCTIONS - Pure functions untuk data processing
@@ -300,7 +333,7 @@ export default function Dashboard() {
       });
     }
     return machines;
-  }, [machines, engineers, category, filterValue]);
+  }, [machines, engineers, category, deferredFilterValue]);
   
   // ============================================================================
   // AGGREGATED DATA - REFACTORED dengan groupByField helper
@@ -716,87 +749,33 @@ export default function Dashboard() {
   }, [filteredMachines]);
   
   /**
-   * monthlyActivationData - Calculate monthly activations from machine install dates
+   * monthlyActivationData - Process data aktivasi mesin per bulan dari API
    * 
-   * Instead of using monthly-machines.json, we calculate from actual machine data
-   * This is more accurate and doesn't rely on separate monthly aggregation
-   * 
-   * Process:
-   * 1. Parse instal_date from each machine
-   * 2. Group by month-year
-   * 3. Count machines per month
+   * Format expected dari API: { month: "Jan", year: 2024, total_activation: 5 }
+   * Convert to chart format: { month: "Jan 2024", count: 5 }
    * 
    * OPTIMIZED: Limit data points to improve chart rendering performance
    */
   const monthlyActivationData = useMemo(() => {
-    if (!machines || machines.length === 0) {
-      console.log("[DEBUG] No machine data for monthly activation");
-      return [];
-    }
+    if (!monthlyMachineData || monthlyMachineData.length === 0) return [];
     
-    console.log("[DEBUG] Calculating monthly activations from", machines.length, "machines");
-    
-    // Group machines by month-year from instal_date
-    const monthlyGroups = {};
-    
-    machines.forEach(machine => {
-      const instalDate = machine.instal_date || machine.install_date || machine.instalDate;
-      if (!instalDate) return;
+    const rawData = monthlyMachineData.map(item => {
+      // Format bulan dan tahun
+      const month = item.month || item.bulan || '';
+      const year = item.year || (new Date().getFullYear()); // Default tahun sekarang
       
-      try {
-        // Parse date in format "19-Aug-20" or similar
-        const dateStr = instalDate.trim();
-        const parts = dateStr.split('-');
-        
-        if (parts.length === 3) {
-          const day = parts[0];
-          const monthStr = parts[1]; // "Aug", "Oct", etc
-          const yearShort = parts[2]; // "20", "21", etc
-          
-          // Convert 2-digit year to 4-digit
-          const year = yearShort.length === 2 
-            ? (parseInt(yearShort) >= 50 ? `19${yearShort}` : `20${yearShort}`)
-            : yearShort;
-          
-          // Month mapping
-          const monthMap = {
-            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-            'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-            'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-          };
-          
-          const monthNum = monthMap[monthStr] || '01';
-          const key = `${year}-${monthNum}`;
-          
-          monthlyGroups[key] = (monthlyGroups[key] || 0) + 1;
-        }
-      } catch (error) {
-        // Skip invalid dates
-      }
+      // Format jumlah aktivasi
+      const count = item.total_activation || item.total_aktifasi || item.jumlah || item.count || 0;
+      
+      return {
+        month: `${month} ${year}`,
+        count: parseInt(count)
+      };
     });
     
-    // Convert to array and sort by date
-    const rawData = Object.entries(monthlyGroups)
-      .map(([key, count]) => {
-        const [year, month] = key.split('-');
-        return {
-          month: `${month}/${year}`,
-          count: count,
-          sortKey: key
-        };
-      })
-      .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
-    
-    console.log("[DEBUG] Calculated", rawData.length, "monthly data points");
-    if (rawData.length > 0) {
-      console.log("[DEBUG] First activation:", rawData[0]);
-      console.log("[DEBUG] Last activation:", rawData[rawData.length - 1]);
-      console.log("[DEBUG] Total machines counted:", rawData.reduce((sum, d) => sum + d.count, 0));
-    }
-    
-    // Return last 36 months (3 years) for performance
-    return rawData.slice(-36);
-  }, [machines]);
+    // Limit to 36 points (3 years of monthly data) to reduce rendering overhead
+    return limitChartData(rawData, 36, 'sample');
+  }, [monthlyMachineData]);
   
   /**
    * formatPercentage - Format percentage number to readable string
@@ -973,7 +952,7 @@ export default function Dashboard() {
               itemStyle={{ color: '#6ee7b7', fontSize: '11px' }}
               formatter={(value) => [value.toLocaleString(), 'Jumlah']}
             />
-            <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} isAnimationActive={false} animationDuration={0} />
             <XAxis dataKey="name" tick={{ fill: '#cbd5e1', fontSize: 10 }} stroke="#64748b" height={20} />
           </BarChart>
         </ResponsiveContainer>
@@ -992,7 +971,7 @@ export default function Dashboard() {
               return [value, 'Rasio'];
             }}
           />
-          <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} isAnimationActive={false} animationDuration={0}>
             {topRegions.map((entry, index) => {
               const ratio = parseFloat(entry.ratio);
               let color = '#10b981'; // green
@@ -1197,7 +1176,7 @@ export default function Dashboard() {
                   itemStyle={{ color: '#c4b5fd', fontSize: '11px' }}
                   formatter={(value) => [`${Math.round(value)}`, 'Ratio']}
                 />
-                <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2.5} dot={{ fill: '#8b5cf6', r: 4, strokeWidth: 2, stroke: '#1e293b' }} />
+                <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2.5} dot={false} isAnimationActive={false} animationDuration={0} />
                 <XAxis dataKey="name" tick={{ fill: '#cbd5e1', fontSize: 10 }} stroke="#64748b" height={25} />
                 <YAxis tick={{ fill: '#cbd5e1', fontSize: 10 }} stroke="#64748b" domain={[0, 100]} width={35} />
               </LineChart>
@@ -1326,7 +1305,11 @@ export default function Dashboard() {
             ].map((tab) => (
               <button
                 key={tab.name}
-                onClick={() => setCategory(tab.name)}
+                onClick={() => {
+                  startTransition(() => {
+                    setCategory(tab.name);
+                  });
+                }}
                 className={`text-sm px-4 py-2 rounded transition-all ${
                   category === tab.name 
                     ? 'bg-blue-600/80 text-white font-semibold' 
@@ -1342,7 +1325,11 @@ export default function Dashboard() {
             <select 
               className="text-sm bg-slate-800/70 text-slate-200 px-3 py-2 rounded border border-slate-600/50 focus:outline-none focus:border-blue-400/70 cursor-pointer"
               value={filterValue}
-              onChange={(e) => setFilterValue(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFilterValue(value); // Update immediately for UI responsiveness
+                // Heavy calculations automatically use deferredFilterValue via useDeferredValue
+              }}
             >
               <option value="">All {category}s</option>
               {options.map((o) => (
@@ -1351,7 +1338,11 @@ export default function Dashboard() {
             </select>
             {filterValue && (
               <button
-                onClick={() => setFilterValue("")}
+                onClick={() => {
+                  startTransition(() => {
+                    setFilterValue("");
+                  });
+                }}
                 className="text-slate-400 hover:text-red-400 text-base font-bold px-2 py-1"
                 title="Clear"
               >
@@ -1617,7 +1608,15 @@ export default function Dashboard() {
                     labelStyle={{ color: "#e2e8f0", fontSize: "11px", fontWeight: "bold" }}
                     itemStyle={{ color: "#93c5fd", fontSize: "11px" }}
                   />
-                  <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6', r: 4 }} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="count" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3} 
+                    dot={false}
+                    isAnimationActive={false}
+                    animationDuration={0}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -1652,7 +1651,7 @@ export default function Dashboard() {
                   labelStyle={{ color: "#e2e8f0", fontSize: "11px", fontWeight: "bold" }}
                   itemStyle={{ color: "#93c5fd", fontSize: "11px" }}
                 />
-                <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} isAnimationActive={false} animationDuration={0} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1686,7 +1685,7 @@ export default function Dashboard() {
                   labelStyle={{ color: "#e2e8f0", fontSize: "11px", fontWeight: "bold" }}
                   itemStyle={{ color: "#6ee7b7", fontSize: "11px" }}
                 />
-                <Line type="monotone" dataKey="count" stroke="#10b981" strokeWidth={3} dot={{ fill: '#10b981', r: 4 }} />
+                <Line type="monotone" dataKey="count" stroke="#10b981" strokeWidth={3} dot={false} isAnimationActive={false} animationDuration={0} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -1817,8 +1816,9 @@ export default function Dashboard() {
                       dataKey="count" 
                       stroke="#3b82f6" 
                       strokeWidth={3} 
-                      dot={{ fill: '#3b82f6', r: 3 }} 
-                      activeDot={{ r: 6, stroke: '#1e293b', strokeWidth: 2 }}
+                      dot={false}
+                      isAnimationActive={false}
+                      animationDuration={0}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -2146,7 +2146,7 @@ export default function Dashboard() {
                       contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #10b981', borderRadius: '8px' }}
                       labelStyle={{ color: '#e2e8f0' }}
                     />
-                    <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} isAnimationActive={false} animationDuration={0} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

@@ -53,28 +53,51 @@ export function useDataFetch(endpoint, options = {}) {
     }
 
     // Listen for custom events to refresh data
-    // Optimized: Debounce rapid events to avoid performance issues
+    // Optimized: Debounce rapid events and use requestIdleCallback to avoid performance issues
     if (eventName) {
       let timeoutId = null;
       let isPending = false;
+      let rafId = null;
       
       const handleDataChange = () => {
-        // Clear existing timeout
+        // Clear existing timeout and RAF
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+        }
         
-        // Debounce: wait 100ms before fetching to batch rapid events
+        // Increased debounce: wait 250ms before fetching to batch rapid events
+        // Use requestIdleCallback for better performance (falls back to setTimeout)
         timeoutId = setTimeout(() => {
           if (!isPending) {
             isPending = true;
-            fetchData().then(() => {
-              isPending = false;
-            }).catch(() => {
-              isPending = false;
-            });
+            
+            // Use requestIdleCallback if available, otherwise use RAF
+            const scheduleFetch = () => {
+              if (window.requestIdleCallback) {
+                window.requestIdleCallback(() => {
+                  fetchData().then(() => {
+                    isPending = false;
+                  }).catch(() => {
+                    isPending = false;
+                  });
+                }, { timeout: 1000 });
+              } else {
+                rafId = requestAnimationFrame(() => {
+                  fetchData().then(() => {
+                    isPending = false;
+                  }).catch(() => {
+                    isPending = false;
+                  });
+                });
+              }
+            };
+            
+            scheduleFetch();
           }
-        }, 100);
+        }, 250); // Increased from 100ms to 250ms
       };
 
       window.addEventListener(eventName, handleDataChange, { passive: true });
@@ -82,6 +105,9 @@ export function useDataFetch(endpoint, options = {}) {
       return () => {
         if (timeoutId) {
           clearTimeout(timeoutId);
+        }
+        if (rafId) {
+          cancelAnimationFrame(rafId);
         }
         window.removeEventListener(eventName, handleDataChange);
       };
