@@ -5,8 +5,9 @@ import { useCrud } from "../hooks/useCrud.js";
 import { useEngineerFilters } from "../hooks/useEngineerFilters.js";
 import { useEngineerKPIs } from "../hooks/useEngineerKPIs.js";
 import { useEngineerHandlers } from "../hooks/useEngineerHandlers.js";
-import { exportEngineersToCSV } from "../utils/engineerUtils.js";
-import { Search, Maximize, Minimize, Edit, Trash2, X, Upload, Download, ChevronDown, ChevronRight, Hash, Home, User, MapPin, Calendar, Settings, AlertCircle, Info, Award, Briefcase } from "react-feather";
+import { useEngineerExport } from "../hooks/useExport.js";
+import toast from 'react-hot-toast';
+import { Search, Maximize, Minimize, Edit, Trash2, X, Upload, Download, ChevronDown, ChevronRight, ChevronLeft, Hash, Home, User, MapPin, Calendar, Settings, AlertCircle, Info, Award, Briefcase } from "react-feather";
 import SkillProgress from "../components/charts/SkillProgress.jsx";
 import { parseExperience } from "../utils/textUtils.js";
 import PageLayout from "../components/layout/PageLayout.jsx";
@@ -24,6 +25,7 @@ export default function Engineers() {
     primaryKey: 'id',
     eventName: 'engineerDataChanged'
   });
+  const { handleExport, isExporting } = useEngineerExport();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("experience"); // experience, region, vendor, area_group
@@ -33,6 +35,20 @@ export default function Engineers() {
   const [uploadingCSV, setUploadingCSV] = useState(false); // CSV upload state
   const [expandedRows, setExpandedRows] = useState(new Set()); // For expandable rows
   const [visibleColumns, setVisibleColumns] = useState(new Set(['id', 'name', 'region', 'area_group', 'vendor', 'years_experience'])); // Default visible columns
+  
+  // Handle ESC key to close fullscreen
+  useEffect(() => {
+    if (!isFullscreen) return;
+    
+    const handleEsc = (event) => {
+      if (event.key === 'Escape') {
+        setIsFullscreen(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isFullscreen]);
   
   // Get all unique fields from engineers data
   const allEngineerFields = useMemo(() => {
@@ -301,10 +317,7 @@ export default function Engineers() {
   // Extract alert and confirm from handlers
   const { alert, confirm } = handlers;
 
-  // Export handler
-  const handleExportExcel = () => {
-    exportEngineersToCSV(filteredEngineers);
-  };
+  // Export is now handled by useEngineerExport hook
 
   // Wrapper handlers for UI
   const handleEdit = (engineer) => {
@@ -585,7 +598,7 @@ export default function Engineers() {
                   <h3 className="text-lg font-semibold text-slate-100">Data Engineer</h3>
                   <p className="text-xs text-slate-400 mt-0.5">{filteredEngineers.length} dari {engineers.length} engineer</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                   <button
                     onClick={() => {
                       setModalMode("create");
@@ -594,18 +607,30 @@ export default function Engineers() {
                       setFormData(freshForm);
                       setShowModal(true);
                     }}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1 sm:gap-1.5"
                   >
-                    <span className="text-sm">+</span> Tambah Engineer
+                    <span className="text-xs sm:text-sm">+</span> <span className="hidden sm:inline">Tambah</span> <span className="sm:hidden">+</span>
                   </button>
                   <button
-                    onClick={handleExportExcel}
-                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                    onClick={() => handleExport(filteredEngineers, null, 'engineer')}
+                    disabled={filteredEngineers.length === 0 || isExporting}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1 sm:gap-1.5"
+                    title={filteredEngineers.length === 0 ? "Tidak ada data untuk diekspor" : "Export data ke CSV"}
                   >
-                    <Download size={14} /> Export CSV
+                    {isExporting ? (
+                      <>
+                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span className="hidden sm:inline">Exporting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download size={12} className="sm:w-3.5 sm:h-3.5" />
+                        <span className="hidden sm:inline">Export CSV</span>
+                      </>
+                    )}
                   </button>
-                  <label className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer">
-                    <Upload size={14} /> {uploadingCSV ? 'Uploading...' : 'Upload CSV'}
+                  <label className="px-2 sm:px-3 py-1 sm:py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1 sm:gap-1.5 cursor-pointer">
+                    <Upload size={12} className="sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">{uploadingCSV ? 'Uploading...' : 'Upload CSV'}</span>
                     <input
                       type="file"
                       accept=".csv"
@@ -616,202 +641,245 @@ export default function Engineers() {
                   </label>
                   <button
                     onClick={() => setIsFullscreen(!isFullscreen)}
-                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1 sm:gap-1.5"
                     title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                   >
-                    {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+                    {isFullscreen ? <Minimize size={12} className="sm:w-3.5 sm:h-3.5" /> : <Maximize size={12} className="sm:w-3.5 sm:h-3.5" />}
                   </button>
                 </div>
               </div>
               
               {/* Search Bar */}
               <div className="w-full">
-                <SearchFilter
-                  value={searchTerm}
-                  onChange={setSearchTerm}
-                  placeholder="Search engineers..."
-                  className="w-full"
-                />
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search engineers..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    aria-label="Search engineers"
+                  />
+                </div>
               </div>
             </div>
             
             <div className="flex-1 overflow-x-auto overflow-y-auto">
-              <table className="w-full">
-                <thead className="bg-slate-900 border-b border-slate-700 sticky top-0 z-10">
+              <table className="w-full min-w-[800px]">
+                <thead className="bg-slate-900/95 backdrop-blur-sm sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider w-12">
+                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider w-12 border-b border-slate-700">
                       <input
                         type="checkbox"
                         checked={selectedEngineers.length === filteredEngineers.length && filteredEngineers.length > 0}
                         onChange={handleSelectAll}
-                        className="w-4 h-4 rounded border-slate-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
+                        className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-slate-800 cursor-pointer"
+                        aria-label="Select all engineers"
                       />
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-48">
+                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-48 border-b border-slate-700">
                       Name
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-32">
+                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-32 border-b border-slate-700">
                       Region
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-40">
+                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-40 border-b border-slate-700">
                       Area Group
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-32">
+                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-32 border-b border-slate-700">
                       Vendor
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-24">
+                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-24 border-b border-slate-700">
                       Exp
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-40">
+                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-40 border-b border-slate-700">
                       Skills
                     </th>
-                    <th className="px-3 py-2 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider w-24">
+                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider w-24 border-b border-slate-700">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700">
-                  {filteredEngineers.map((engineer, idx) => {
-                    const isExpanded = expandedRows.has(engineer.id);
-                    return (
-                      <React.Fragment key={idx}>
-                        <tr className="hover:bg-slate-750 transition-colors">
-                          <td className="px-3 py-2 text-center whitespace-nowrap w-12">
-                            <input
-                              type="checkbox"
-                              checked={selectedEngineers.includes(engineer.id)}
-                              onChange={() => handleSelectOne(engineer.id)}
-                              className="w-4 h-4 rounded border-slate-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-800 cursor-pointer"
-                            />
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap w-48">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => toggleRow(engineer.id)}
-                                className="text-slate-400 hover:text-slate-200 transition-colors"
-                              >
-                                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                              </button>
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                                {engineer.name?.charAt(0) || "?"}
+                <tbody className="divide-y divide-slate-700/50">
+                  {filteredEngineers.length > 0 ? (
+                    filteredEngineers.map((engineer, idx) => {
+                      const isExpanded = expandedRows.has(engineer.id);
+                      return (
+                        <React.Fragment key={idx}>
+                          <tr className={`hover:bg-slate-700/40 transition-colors ${
+                            idx % 2 === 0 ? 'bg-slate-800/50' : 'bg-slate-800/30'
+                          }`}>
+                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-center whitespace-nowrap w-12">
+                              <input
+                                type="checkbox"
+                                checked={selectedEngineers.includes(engineer.id)}
+                                onChange={() => handleSelectOne(engineer.id)}
+                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-slate-800 cursor-pointer"
+                                aria-label={`Select engineer ${engineer.id}`}
+                              />
+                            </td>
+                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap w-48">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => toggleRow(engineer.id)}
+                                  className="text-slate-400 hover:text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  aria-label={isExpanded ? "Collapse row" : "Expand row"}
+                                >
+                                  {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                </button>
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                                  {engineer.name?.charAt(0) || "?"}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs sm:text-sm font-medium text-slate-100 truncate">{engineer.name || "-"}</div>
+                                  <div className="text-xs text-slate-400 truncate">{engineer.id || "-"}</div>
+                                </div>
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-medium text-slate-100 truncate">{engineer.name || "-"}</div>
-                                <div className="text-xs text-slate-400 truncate">{engineer.id || "-"}</div>
+                            </td>
+                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap w-32">
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                {engineer.region || "-"}
+                              </span>
+                            </td>
+                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-slate-300 w-40 truncate" title={engineer.area_group || "-"}>
+                              {engineer.area_group || "-"}
+                            </td>
+                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-slate-300 w-32 truncate" title={engineer.vendor || "-"}>
+                              {engineer.vendor || "-"}
+                            </td>
+                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap w-24">
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-green-500/20 text-green-400 border border-green-500/30">
+                                {engineer.years_experience || "0"}
+                              </span>
+                            </td>
+                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 w-40">
+                              <div className="flex flex-wrap gap-1">
+                                {(() => {
+                                  const skillsStr = engineer.technical_skills_training || "";
+                                  const skills = skillsStr.split(',').map(s => s.trim()).filter(Boolean);
+                                  
+                                  if (skills.length === 0) {
+                                    return <span className="text-xs text-slate-500">No skills</span>;
+                                  }
+                                  
+                                  return (
+                                    <>
+                                      {skills.slice(0, 2).map((skill, i) => (
+                                        <span
+                                          key={i}
+                                          className="px-2 py-0.5 text-xs rounded bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                                        >
+                                          {skill.replace('Training ', '')}
+                                        </span>
+                                      ))}
+                                      {skills.length > 2 && (
+                                        <span className="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-400 border border-slate-600">
+                                          +{skills.length - 2}
+                                        </span>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap w-32">
-                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400">
-                              {engineer.region || "-"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-300 w-40 truncate" title={engineer.area_group || "-"}>
-                            {engineer.area_group || "-"}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-slate-300 w-32 truncate" title={engineer.vendor || "-"}>
-                            {engineer.vendor || "-"}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap w-24">
-                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400">
-                              {engineer.years_experience || "0"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 w-40">
-                            <div className="flex flex-wrap gap-1">
-                              {(() => {
-                                const skillsStr = engineer.technical_skills_training || "";
-                            const skills = skillsStr.split(',').map(s => s.trim()).filter(Boolean);
-                            
-                            if (skills.length === 0) {
-                              return <span className="text-xs text-slate-500">No skills</span>;
-                            }
-                            
-                            return (
-                              <>
-                                {skills.slice(0, 2).map((skill, i) => (
-                                  <span
-                                    key={i}
-                                    className="px-2 py-0.5 text-xs rounded bg-purple-500/20 text-purple-400"
-                                  >
-                                    {skill.replace('Training ', '')}
-                                  </span>
-                                ))}
-                                {skills.length > 2 && (
-                                  <span className="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-400">
-                                    +{skills.length - 2}
-                                  </span>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap w-24">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleEdit(engineer)}
-                            className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors"
-                            title="Edit"
-                          >
-                            <Edit size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(engineer)}
-                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                            </td>
+                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap w-24">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => handleEdit(engineer)}
+                                  className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  title="Edit"
+                                  aria-label={`Edit engineer ${engineer.id}`}
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(engineer)}
+                                  className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+                                  title="Delete"
+                                  aria-label={`Delete engineer ${engineer.id}`}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr className={`${idx % 2 === 0 ? 'bg-slate-800/50' : 'bg-slate-800/30'}`}>
+                              <td colSpan={8} className="px-4 py-3">
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
+                                  {allEngineerFields.filter(f => !['id', 'name', 'region', 'area_group', 'vendor', 'years_experience', 'technical_skills_training', 'soft_skills_training'].includes(f)).map(field => {
+                                    const value = engineer[field] || '-';
+                                    const fieldLabel = field.split('_').map(word => 
+                                      word.charAt(0).toUpperCase() + word.slice(1)
+                                    ).join(' ');
+                                    return (
+                                      <div key={field} className="border-b border-slate-700/50 pb-2">
+                                        <div className="text-slate-400 font-medium mb-1">{fieldLabel}</div>
+                                        <div className="text-slate-200">{value}</div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="8" className="px-4 py-12 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="text-5xl">📭</div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-200 mb-1">Tidak ada engineer ditemukan</p>
+                            <p className="text-xs text-slate-400">Coba ubah filter atau hapus beberapa filter untuk melihat hasil</p>
+                          </div>
+                          {(sortBy || sortValue || searchTerm) && (
+                            <button
+                              onClick={() => {
+                                setSortBy("experience");
+                                setSortValue("");
+                                setSearchTerm("");
+                              }}
+                              className="mt-2 px-4 py-2 text-xs font-medium text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
+                            >
+                              Hapus Semua Filter
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
-                    {isExpanded && (
-                      <tr className="bg-slate-800/50">
-                        <td colSpan={8} className="px-4 py-3">
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
-                            {allEngineerFields.filter(f => !['id', 'name', 'region', 'area_group', 'vendor', 'years_experience', 'technical_skills_training', 'soft_skills_training'].includes(f)).map(field => {
-                              const value = engineer[field] || '-';
-                              const fieldLabel = field.split('_').map(word => 
-                                word.charAt(0).toUpperCase() + word.slice(1)
-                              ).join(' ');
-                              return (
-                                <div key={field} className="border-b border-slate-700/50 pb-2">
-                                  <div className="text-slate-400 font-medium mb-1">{fieldLabel}</div>
-                                  <div className="text-slate-200">{value}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                      </React.Fragment>
-                    );
-                  })}
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-        {/* Training Skill Progress - Right Side */}
+        {/* Training Skill Progress - Right Side - Modern Design */}
         <div className="lg:col-span-4">
-          <div className="bg-[var(--card-bg)] p-4 rounded-lg relative min-h-[400px] max-h-[600px] flex flex-col border border-slate-700">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-lg font-semibold text-slate-100">Training Skill Progress</h2>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">{filteredEngineers.length} engineers</span>
+          <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 p-5 rounded-xl border border-slate-700/50 relative min-h-[400px] max-h-[600px] flex flex-col shadow-lg">
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
+              <div>
+                <h2 className="text-lg font-bold text-slate-100 mb-1">Training Skill Progress</h2>
+                <p className="text-xs text-slate-400">{filteredEngineers.length} engineers</p>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800">
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800/50">
               {filteredEngineers.length > 0 ? (
                 filteredEngineers.map((engineer, idx) => (
                   <SkillProgress key={idx} engineer={engineer} />
                 ))
               ) : (
-                <div className="flex items-center justify-center h-full text-slate-500">
-                  No engineers data available
+                <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                  <div className="w-16 h-16 rounded-full bg-slate-700/30 flex items-center justify-center mb-3">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium">No engineers data available</p>
                 </div>
               )}
             </div>

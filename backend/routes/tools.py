@@ -50,12 +50,15 @@ def tools():
             
         except FileNotFoundError as e:
             print(f"[ERROR] File not found: {e}")
-            return jsonify({"error": str(e), "data": []}), 404
+            import traceback
+            traceback.print_exc()
+            return jsonify([]), 200  # Return empty array instead of error object
         except Exception as e:
             import traceback
             print(f"[ERROR] Failed to get tools: {e}")
-            print(traceback.format_exc())
-            return jsonify({"error": str(e), "data": []}), 500
+            traceback.print_exc()
+            # Return empty array instead of error object to avoid breaking frontend
+            return jsonify([]), 200
     
     elif request.method == 'POST':
         try:

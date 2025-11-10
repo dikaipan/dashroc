@@ -48,15 +48,37 @@ const InventoryBabyParts = () => {
       fetchInProgressRef.current = true;
       try {
         if (isMountedRef.current) setLoading(true);
-        const response = await fetch(`${API_BASE_URL}/baby-parts`);
+        
+        const apiUrl = `${API_BASE_URL}/baby-parts`;
+        console.log('[InventoryBabyParts] Fetching from:', apiUrl);
+        console.log('[InventoryBabyParts] API_BASE_URL:', API_BASE_URL);
+        
+        const response = await fetch(apiUrl);
+        
         if (!isMountedRef.current) {
           fetchInProgressRef.current = false;
           return;
         }
+        
+        console.log('[InventoryBabyParts] Response status:', response.status);
+        console.log('[InventoryBabyParts] Response headers:', Object.fromEntries(response.headers.entries()));
+        
         const contentType = response.headers.get('content-type');
+        console.log('[InventoryBabyParts] Content-Type:', contentType);
+        
         if (!contentType || !contentType.includes('application/json')) {
           const text = await response.text();
-          console.error('[InventoryBabyParts] Expected JSON but got:', contentType, text.substring(0, 100));
+          console.error('[InventoryBabyParts] Expected JSON but got:', contentType);
+          console.error('[InventoryBabyParts] Response text (first 200 chars):', text.substring(0, 200));
+          
+          // Show user-friendly error message
+          if (text.includes('<!doctype html>') || text.includes('<html')) {
+            toast.error('Backend tidak tersedia. Pastikan Flask server berjalan atau backend sudah di-deploy.', {
+              duration: 5000,
+              icon: '⚠️'
+            });
+          }
+          
           if (isMountedRef.current) {
             setBabyParts([]);
             setLoading(false);
@@ -64,14 +86,16 @@ const InventoryBabyParts = () => {
           fetchInProgressRef.current = false;
           return;
         }
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('[InventoryBabyParts] Received data:', data);
+          console.log('[InventoryBabyParts] Data type:', typeof data, 'Is array:', Array.isArray(data));
+          
           if (!isMountedRef.current) {
             fetchInProgressRef.current = false;
             return;
           }
-          console.log('[InventoryBabyParts] Received data:', data);
-          console.log('[InventoryBabyParts] Data type:', typeof data, 'Is array:', Array.isArray(data));
           
           let partsData = [];
           if (Array.isArray(data)) {
@@ -93,6 +117,13 @@ const InventoryBabyParts = () => {
         } else {
           const errorData = await response.json().catch(() => ({}));
           console.error('[InventoryBabyParts] Error response:', response.status, errorData);
+          
+          // Show user-friendly error message
+          toast.error(`Error loading baby parts: ${errorData.error || response.statusText}`, {
+            duration: 5000,
+            icon: '❌'
+          });
+          
           if (isMountedRef.current) setBabyParts([]);
         }
       } catch (error) {
@@ -101,6 +132,14 @@ const InventoryBabyParts = () => {
           return;
         }
         console.error('[InventoryBabyParts] Error fetching baby parts:', error);
+        console.error('[InventoryBabyParts] Error details:', error.message, error.stack);
+        
+        // Show user-friendly error message
+        toast.error(`Gagal memuat data baby parts: ${error.message}`, {
+          duration: 5000,
+          icon: '❌'
+        });
+        
         if (isMountedRef.current) setBabyParts([]);
       } finally {
         if (isMountedRef.current) {
@@ -326,10 +365,11 @@ const InventoryBabyParts = () => {
           </div>
           <button
             onClick={() => openModal()}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl"
+            className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs sm:text-sm font-semibold transition-all shadow-lg hover:shadow-xl"
           >
-            <Plus size={20} />
-            Tambah Baby Part
+            <Plus size={16} className="sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">Tambah Baby Part</span>
+            <span className="sm:hidden">Tambah</span>
           </button>
         </div>
 
@@ -404,10 +444,11 @@ const InventoryBabyParts = () => {
               {!searchTerm && (
                 <button
                   onClick={() => openModal()}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl mx-auto"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs sm:text-sm font-semibold transition-all shadow-lg hover:shadow-xl mx-auto"
                 >
-                  <Plus size={20} />
-                  Tambah Baby Part Pertama
+                  <Plus size={16} className="sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Tambah Baby Part Pertama</span>
+                  <span className="sm:hidden">Tambah</span>
                 </button>
               )}
             </div>
@@ -499,10 +540,11 @@ const InventoryBabyParts = () => {
               {!searchTerm && (
                 <button
                   onClick={() => openModal()}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl mx-auto"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs sm:text-sm font-semibold transition-all shadow-lg hover:shadow-xl mx-auto"
                 >
-                  <Plus size={20} />
-                  Tambah Baby Part Pertama
+                  <Plus size={16} className="sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Tambah Baby Part Pertama</span>
+                  <span className="sm:hidden">Tambah</span>
                 </button>
               )}
             </div>

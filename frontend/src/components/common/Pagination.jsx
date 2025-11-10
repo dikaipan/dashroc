@@ -1,156 +1,62 @@
 /**
- * Reusable Pagination Component
- * Generic pagination with page navigation
+ * Shared Pagination Component
+ * Provides consistent pagination UI across all pages
+ * 
+ * @module Pagination
  */
+
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'react-feather';
 
-export default function Pagination({
-  currentPage = 1,
-  totalPages = 1,
-  itemsPerPage = 50,
-  totalItems = 0,
+/**
+ * Standard pagination component
+ * @param {Object} props
+ * @param {number} props.currentPage - Current page number
+ * @param {number} props.totalPages - Total number of pages
+ * @param {number} props.totalItems - Total number of items
+ * @param {number} props.itemsPerPage - Number of items per page
+ * @param {Function} props.onPageChange - Callback when page changes
+ * @param {string} props.itemLabel - Label for items (e.g., 'mesin', 'engineers')
+ */
+export function Pagination({ 
+  currentPage, 
+  totalPages, 
+  totalItems, 
+  itemsPerPage, 
   onPageChange,
-  onItemsPerPageChange,
-  showItemsPerPage = true,
-  className = '',
+  itemLabel = 'item'
 }) {
-  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+  if (totalPages <= 1) return null;
 
-  const handlePrevious = () => {
-    if (currentPage > 1) {
-      onPageChange(currentPage - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (currentPage < totalPages) {
-      onPageChange(currentPage + 1);
-    }
-  };
-
-  const handlePageClick = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      onPageChange(page);
-    }
-  };
-
-  // Generate page numbers to show
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisible = 5;
-    
-    if (totalPages <= maxVisible) {
-      // Show all pages if total is small
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      // Show first page, last page, and pages around current
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) {
-          pages.push(i);
-        }
-        pages.push('...');
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1);
-        pages.push('...');
-        for (let i = totalPages - 3; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        pages.push(1);
-        pages.push('...');
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-          pages.push(i);
-        }
-        pages.push('...');
-        pages.push(totalPages);
-      }
-    }
-    
-    return pages;
-  };
-
-  if (totalPages <= 1 && !showItemsPerPage) {
-    return null;
-  }
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
-    <div className={`flex items-center justify-between ${className}`}>
-      {/* Items per page selector */}
-      {showItemsPerPage && (
-        <div className="flex items-center gap-2">
-          <span className="text-slate-400 text-sm">Items per page:</span>
-          <select
-            value={itemsPerPage}
-            onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-            className="px-3 py-1 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:border-blue-500"
-          >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-          </select>
-        </div>
-      )}
-
-      {/* Page info */}
-      <div className="text-slate-400 text-sm">
-        Showing {startItem} to {endItem} of {totalItems} items
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-700 flex-shrink-0 bg-slate-800/50">
+      <div className="text-xs sm:text-sm text-slate-400 text-center sm:text-left">
+        Menampilkan <span className="font-semibold text-slate-300">{startIndex}</span> - <span className="font-semibold text-slate-300">{endIndex}</span> dari <span className="font-semibold text-slate-300">{totalItems.toLocaleString()}</span> {itemLabel}
       </div>
-
-      {/* Page navigation */}
-      {totalPages > 1 && (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handlePrevious}
-            disabled={currentPage === 1}
-            className="p-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title="Previous page"
-          >
-            <ChevronLeft size={18} />
-          </button>
-
-          <div className="flex items-center gap-1">
-            {getPageNumbers().map((page, index) => {
-              if (page === '...') {
-                return (
-                  <span key={`ellipsis-${index}`} className="px-2 text-slate-500">
-                    ...
-                  </span>
-                );
-              }
-
-              return (
-                <button
-                  key={page}
-                  onClick={() => handlePageClick(page)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    currentPage === page
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                  }`}
-                >
-                  {page}
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            onClick={handleNext}
-            disabled={currentPage === totalPages}
-            className="p-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title="Next page"
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      )}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Previous page"
+        >
+          <ChevronLeft size={16} className="text-slate-300" />
+        </button>
+        <span className="text-xs sm:text-sm text-slate-300 px-2">
+          Halaman {currentPage} dari {totalPages}
+        </span>
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Next page"
+        >
+          <ChevronRight size={16} className="text-slate-300" />
+        </button>
+      </div>
     </div>
   );
 }
-

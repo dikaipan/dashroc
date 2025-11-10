@@ -34,10 +34,10 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
-// Log API configuration (only in development)
-if (import.meta.env.DEV) {
-  console.log('[API Config] Environment:', import.meta.env.MODE);
-  console.log('[API Config] API Base URL:', API_BASE_URL);
-  console.log('[API Config] VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL || '(not set, using default /api)');
-}
+// Log API configuration (always, for debugging)
+console.log('[API Config] Environment:', import.meta.env.MODE);
+console.log('[API Config] API Base URL:', API_BASE_URL);
+console.log('[API Config] VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL || '(not set, using default /api)');
+console.log('[API Config] Is Production:', import.meta.env.PROD);
+console.log('[API Config] Is Development:', import.meta.env.DEV);
 

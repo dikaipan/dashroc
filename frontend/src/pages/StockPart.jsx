@@ -38,10 +38,12 @@ import { useCrud } from '../hooks/useCrud.js';
 import { useStockPartFilters } from '../hooks/useStockPartFilters.js';
 import { useStockPartKPIs } from '../hooks/useStockPartKPIs.js';
 import { useStockPartHandlers } from '../hooks/useStockPartHandlers.js';
+import { useStockPartExport } from '../hooks/useExport.js';
 import PageLayout from '../components/layout/PageLayout.jsx';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
 import InlineLoadingSpinner from '../components/common/InlineLoadingSpinner';
 import { CustomAlert, CustomConfirm } from '../components/common';
+import toast from 'react-hot-toast';
 
 // Lazy load heavy modal components for better code splitting
 const StockPartDetailModal = React.lazy(() => import('../components/stockpart/StockPartDetailModal.jsx'));
@@ -197,6 +199,8 @@ export default function StockPart() {
     primaryKey: 'part_number',
     eventName: 'stockPartDataChanged'
   });
+  
+  const { handleExport, isExporting } = useStockPartExport();
   
   const [fullscreenChart, setFullscreenChart] = useState(null);
   const [fullscreenKPI, setFullscreenKPI] = useState(null); // For KPI cards fullscreen
@@ -600,43 +604,18 @@ const handleDelete = (part) => {
   handlers.handleDelete(part);
 };
 
-const handleExport = () => {
-  if (!filteredParts || filteredParts.length === 0) {
-    alert.warning('No data to export');
-    return;
-  }
-  const allKeys = Object.keys(filteredParts[0]);
-  const exportData = filteredParts.map(part => {
-    const exportRow = {};
-    allKeys.forEach(key => {
-      if (key.toLowerCase() === 'region' && (part.part_number || part['part number'] || '').toLowerCase() === 'region') return;
-      exportRow[key] = part[key] || '';
-    });
-    return exportRow;
-  });
-  if (exportData.length === 0) { 
-    alert.warning('No data to export'); 
-    return; 
-  }
-  const headers = Object.keys(exportData[0]);
-  const csvContent = [headers.join(','), ...exportData.map(row => headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`).join(','))].join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `stock_parts_${new Date().toISOString().split('T')[0]}.csv`;
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  alert.success('Data berhasil diekspor!', 'Export Berhasil');
-};
+// Export functionality is now handled by useStockPartExport hook
+// Removed local handleExport function - using handleExport from useStockPartExport hook
 
   const handleUploadCSV = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     if (!file.name.endsWith('.csv')) {
-      alert.warning('Please upload a CSV file');
+      toast.error('Harap upload file CSV', {
+        icon: '⚠️',
+        duration: 3000
+      });
       return;
     }
 
@@ -657,13 +636,19 @@ const handleExport = () => {
         throw new Error(errorData.error || 'Failed to upload CSV');
       }
 
-      alert.success('CSV uploaded successfully!', 'Upload Berhasil');
+      toast.success('CSV berhasil diupload!', {
+        icon: '✅',
+        duration: 4000
+      });
       // Trigger data refresh
       window.dispatchEvent(new Event('stockPartDataChanged'));
       event.target.value = '';
     } catch (error) {
       console.error('Error uploading CSV:', error);
-      alert.error(`Failed to upload CSV: ${error.message}`);
+      toast.error(`Gagal mengupload CSV: ${error.message}`, {
+        icon: '❌',
+        duration: 4000
+      });
     } finally {
       setUploadingCSV(false);
     }
@@ -1260,20 +1245,20 @@ const handleExport = () => {
                 
                 <button
                   onClick={handleAdd}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  className="px-2 sm:px-4 py-1 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2"
                 >
-                  <Plus size={16} /> Add Part
+                  <Plus size={14} className="sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Add Part</span>
                 </button>
                 
                 <button
                   onClick={handleEditClick}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  className="px-2 sm:px-4 py-1 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2"
                 >
-                  <Edit size={16} /> Edit Part
+                  <Edit size={14} className="sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Edit Part</span>
                 </button>
                 
-                <label className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer">
-                  <Upload size={16} /> {uploadingCSV ? 'Uploading...' : 'Upload CSV'}
+                <label className="px-2 sm:px-4 py-1 sm:py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2 cursor-pointer">
+                  <Upload size={14} className="sm:w-4 sm:h-4" /> <span className="hidden sm:inline">{uploadingCSV ? 'Uploading...' : 'Upload CSV'}</span>
                   <input
                     type="file"
                     accept=".csv"
@@ -1284,10 +1269,22 @@ const handleExport = () => {
                 </label>
                 
                 <button
-                  onClick={handleExport}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  onClick={() => handleExport(filteredParts, null, 'stock part')}
+                  disabled={filteredParts.length === 0 || isExporting}
+                  className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1 sm:gap-1.5"
+                  title={filteredParts.length === 0 ? "Tidak ada data untuk diekspor" : "Export data ke CSV"}
                 >
-                  <Download size={16} /> Export CSV
+                  {isExporting ? (
+                    <>
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span className="hidden sm:inline">Exporting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download size={12} className="sm:w-3.5 sm:h-3.5" />
+                      <span className="hidden sm:inline">Export CSV</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -1330,19 +1327,29 @@ const handleExport = () => {
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-900 border-b border-slate-700">
+            <thead className="bg-slate-900/95 backdrop-blur-sm sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Part Number</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Part Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">Type</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider">Top 20</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">FSL Locations</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider">FSL Stock</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider">Actions</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap border-b border-slate-700">Part Number</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider border-b border-slate-700">Part Name</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap border-b border-slate-700">Type</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap border-b border-slate-700">Top 20</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider border-b border-slate-700">FSL Locations</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap border-b border-slate-700">FSL Stock</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider sticky right-0 bg-slate-900/95 backdrop-blur-sm z-20 w-24 border-b border-slate-700">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700">
-              {paginatedParts.map((part, idx) => {
+            <tbody>
+              {paginatedParts.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-4 py-8 text-center text-slate-400">
+                    <div className="flex flex-col items-center gap-2">
+                      <Package size={32} className="text-slate-500" />
+                      <p className="text-sm">Tidak ada data stock part</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                paginatedParts.map((part, idx) => {
                 const partNumber = part.part_number || part['part number'] || '-';
                 const partName = part.part_name || part['part name'] || '-';
                 const typeOfPart = part.type_of_part || part['type of part'] || '-';
@@ -1389,42 +1396,48 @@ const handleExport = () => {
                 const totalFslStock = fslWithStock.reduce((sum, fsl) => sum + fsl.stock, 0);
                 
                 return (
-                  <tr key={idx} className="hover:bg-slate-800/50 transition-colors">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm font-medium text-blue-400">{partNumber}</div>
+                  <tr
+                    key={idx}
+                    className={`hover:bg-slate-700/40 transition-colors ${
+                      idx % 2 === 0 ? 'bg-slate-800/50' : 'bg-slate-800/30'
+                    }`}
+                  >
+                    <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-100 font-mono truncate" title={partNumber || ''}>
+                      {partNumber || '-'}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-slate-300 max-w-xs truncate" title={partName}>
-                        {partName}
-                      </div>
+                    <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-100 max-w-xs truncate" title={partName || ''}>
+                      {partName || '-'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-500/20 text-purple-400">
-                        {typeOfPart}
+                    <td className="px-3 py-2.5 text-xs sm:text-sm whitespace-nowrap">
+                      <span className="inline-flex items-center px-2 py-1 text-xs rounded font-medium border bg-purple-500/20 text-purple-400 border-purple-500/30 whitespace-nowrap">
+                        {typeOfPart || '-'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-xs sm:text-sm text-center whitespace-nowrap">
                       {topUsage.toLowerCase() === 'yes' ? (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400">
+                        <span className="inline-flex items-center px-2 py-1 text-xs rounded font-medium border bg-green-500/20 text-green-400 border-green-500/30">
                           ✓ Yes
                         </span>
                       ) : (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-700 text-slate-400">
+                        <span className="inline-flex items-center px-2 py-1 text-xs rounded font-medium border bg-slate-700/50 text-slate-400 border-slate-600/30">
                           No
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2.5 text-xs sm:text-sm">
                       <div className="flex flex-wrap gap-1">
                         {fslWithStock.length > 0 ? (
                           <>
                             {fslWithStock.slice(0, 3).map((fsl, i) => (
-                              <span key={i} className="px-2 py-1 text-xs font-medium rounded-full bg-blue-500/20 text-blue-400 whitespace-nowrap">
+                              <span
+                                key={i}
+                                className="inline-flex items-center px-2 py-0.5 text-xs rounded font-medium border bg-blue-500/20 text-blue-400 border-blue-500/30 whitespace-nowrap"
+                              >
                                 {fsl.name}: {fsl.stock}
                               </span>
                             ))}
                             {fslWithStock.length > 3 && (
-                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-700 text-slate-400">
+                              <span className="inline-flex items-center px-2 py-0.5 text-xs rounded font-medium border bg-slate-700/50 text-slate-400 border-slate-600/30">
                                 +{fslWithStock.length - 3}
                               </span>
                             )}
@@ -1434,58 +1447,63 @@ const handleExport = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-xs sm:text-sm text-center whitespace-nowrap">
                       <span className="text-sm font-bold text-cyan-400">{totalFslStock}</span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="px-3 py-2.5 sticky right-0 bg-slate-800/95 backdrop-blur-sm z-10">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => handleEdit(part)}
-                          className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors"
+                          className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                           title="Edit"
+                          aria-label={`Edit part ${partNumber}`}
                         >
-                          <Edit size={16} />
+                          <Edit size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(part)}
-                          className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                          className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
                           title="Delete"
+                          aria-label={`Delete part ${partNumber}`}
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
                   </tr>
                 );
-              })}
+              })
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="p-4 border-t border-slate-700 flex items-center justify-between">
-            <div className="text-sm text-slate-400">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredParts.length)} of {filteredParts.length} parts
+          <div className="px-3 sm:px-4 py-3 border-t border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs sm:text-sm text-slate-400">
+              Menampilkan <span className="font-semibold text-slate-300">{((currentPage - 1) * itemsPerPage) + 1}</span> - <span className="font-semibold text-slate-300">{Math.min(currentPage * itemsPerPage, filteredParts.length)}</span> dari <span className="font-semibold text-slate-300">{filteredParts.length.toLocaleString()}</span> parts
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label="Previous page"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={16} className="text-slate-300" />
               </button>
               <div className="flex items-center gap-1">
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                   <button
                     key={page}
                     onClick={() => handlePageChange(page)}
-                    className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                    className={`px-3 py-1 rounded-lg text-xs sm:text-sm transition-colors ${
                       currentPage === page
                         ? 'bg-blue-500 text-white'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                     }`}
+                    aria-label={`Go to page ${page}`}
                   >
                     {page}
                   </button>
@@ -1494,9 +1512,10 @@ const handleExport = () => {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label="Next page"
               >
-                <ChevronRight size={16} />
+                <ChevronRight size={16} className="text-slate-300" />
               </button>
             </div>
           </div>

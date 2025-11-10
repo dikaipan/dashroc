@@ -6,12 +6,12 @@
 /**
  * Export engineers to CSV
  * @param {Array} engineers - Array of engineer objects
- * @returns {void}
+ * @param {string} [fileName] - Optional custom file name (without extension and date)
+ * @returns {{success: boolean, fileName?: string, count?: number, error?: string}}
  */
-export function exportEngineersToCSV(engineers) {
+export function exportEngineersToCSV(engineers, fileName = null) {
   if (!engineers || engineers.length === 0) {
-    alert('No data to export');
-    return;
+    return { success: false, error: 'No data to export' };
   }
 
   // Collect ALL unique keys from ALL engineers to ensure no field is missed
@@ -49,16 +49,31 @@ export function exportEngineersToCSV(engineers) {
     }).join(","))
   ].join("\n");
 
-  // Download file
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  link.setAttribute("href", url);
-  link.setAttribute("download", `engineers_${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.visibility = "hidden";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  // Generate file name
+  const dateStr = new Date().toISOString().split('T')[0];
+  let finalFileName;
+  if (fileName) {
+    // Use custom file name with date
+    finalFileName = `engineers_${fileName}_${dateStr}.csv`;
+  } else {
+    // Use default file name
+    finalFileName = `engineers_${dateStr}.csv`;
+  }
+
+  try {
+    // Download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = finalFileName;
+    link.click();
+    // Clean up the object URL after a short delay
+    setTimeout(() => URL.revokeObjectURL(link.href), 100);
+    return { success: true, fileName: finalFileName, count: engineers.length };
+  } catch (error) {
+    console.error('Export error:', error);
+    return { success: false, error: error.message || 'Failed to export CSV' };
+  }
 }
 
 /**

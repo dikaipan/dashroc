@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Package, Plus, Edit, Trash2, Search, Grid, List, Eye, Camera, Upload, X, Save, Image } from 'react-feather';
+import { Package, Plus, Edit, Trash2, Search, Grid, List, Eye, Camera, Upload, X, Save, Image, Download } from 'react-feather';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useCrud } from '../../hooks/useCrud';
+import { useToolExport } from '../../hooks/useExport';
 import CustomConfirm from '../common/CustomConfirm';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../../utils/apiConfig';
@@ -46,6 +47,9 @@ const InventoryTools = () => {
     primaryKey: 'tools_name',
     eventName: 'toolDataChanged'
   });
+  
+  // Export hook
+  const { handleExport, isExporting } = useToolExport();
 
   // Fetch tools
   useEffect(() => {
@@ -58,15 +62,37 @@ const InventoryTools = () => {
       fetchInProgressRef.current = true;
       try {
         if (isMountedRef.current) setLoading(true);
-        const response = await fetch(`${API_BASE_URL}/tools`);
+        
+        const apiUrl = `${API_BASE_URL}/tools`;
+        console.log('[InventoryTools] Fetching from:', apiUrl);
+        console.log('[InventoryTools] API_BASE_URL:', API_BASE_URL);
+        
+        const response = await fetch(apiUrl);
+        
         if (!isMountedRef.current) {
           fetchInProgressRef.current = false;
           return;
         }
+        
+        console.log('[InventoryTools] Response status:', response.status);
+        console.log('[InventoryTools] Response headers:', Object.fromEntries(response.headers.entries()));
+        
         const contentType = response.headers.get('content-type');
+        console.log('[InventoryTools] Content-Type:', contentType);
+        
         if (!contentType || !contentType.includes('application/json')) {
           const text = await response.text();
-          console.error('[InventoryTools] Expected JSON but got:', contentType, text.substring(0, 100));
+          console.error('[InventoryTools] Expected JSON but got:', contentType);
+          console.error('[InventoryTools] Response text (first 200 chars):', text.substring(0, 200));
+          
+          // Show user-friendly error message
+          if (text.includes('<!doctype html>') || text.includes('<html')) {
+            toast.error('Backend tidak tersedia. Pastikan Flask server berjalan atau backend sudah di-deploy.', {
+              duration: 5000,
+              icon: '⚠️'
+            });
+          }
+          
           if (isMountedRef.current) {
             setTools([]);
             setLoading(false);
@@ -74,25 +100,42 @@ const InventoryTools = () => {
           fetchInProgressRef.current = false;
           return;
         }
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('[InventoryTools] Received data:', data);
+          console.log('[InventoryTools] Data type:', typeof data, 'Is array:', Array.isArray(data));
+          
           if (!isMountedRef.current) {
             fetchInProgressRef.current = false;
             return;
           }
+          
+          let toolsData = [];
           if (Array.isArray(data)) {
-            setTools(data);
+            toolsData = data;
           } else if (data.data && Array.isArray(data.data)) {
-            setTools(data.data);
+            toolsData = data.data;
           } else if (data.rows && Array.isArray(data.rows)) {
-            setTools(data.rows);
+            toolsData = data.rows;
           } else {
             console.warn('[InventoryTools] Unexpected data format:', data);
-            setTools([]);
+            toolsData = [];
           }
+          
+          console.log('[InventoryTools] Parsed toolsData:', toolsData);
+          console.log('[InventoryTools] Tools count:', toolsData.length);
+          setTools(toolsData);
         } else {
           const errorData = await response.json().catch(() => ({}));
           console.error('[InventoryTools] Error response:', response.status, errorData);
+          
+          // Show user-friendly error message
+          toast.error(`Error loading tools: ${errorData.error || response.statusText}`, {
+            duration: 5000,
+            icon: '❌'
+          });
+          
           if (isMountedRef.current) setTools([]);
         }
       } catch (error) {
@@ -101,6 +144,14 @@ const InventoryTools = () => {
           return;
         }
         console.error('[InventoryTools] Error fetching tools:', error);
+        console.error('[InventoryTools] Error details:', error.message, error.stack);
+        
+        // Show user-friendly error message
+        toast.error(`Gagal memuat data tools: ${error.message}`, {
+          duration: 5000,
+          icon: '❌'
+        });
+        
         setTools([]);
       } finally {
         if (isMountedRef.current) setLoading(false);
@@ -452,10 +503,11 @@ const InventoryTools = () => {
           </div>
           <button
             onClick={() => openModal()}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl"
+            className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs sm:text-sm font-semibold transition-all shadow-lg hover:shadow-xl"
           >
-            <Plus size={20} />
-            Tambah Tools
+            <Plus size={16} className="sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">Tambah Tools</span>
+            <span className="sm:hidden">Tambah</span>
           </button>
         </div>
 
@@ -509,6 +561,25 @@ const InventoryTools = () => {
               <span className="hidden sm:inline">Tabel</span>
             </button>
           </div>
+          {/* Export Button */}
+          <button
+            onClick={() => handleExport(filteredTools, null, 'tool')}
+            disabled={filteredTools.length === 0 || isExporting}
+            className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1 sm:gap-1.5"
+            title={filteredTools.length === 0 ? "Tidak ada data untuk diekspor" : "Export data ke CSV"}
+          >
+            {isExporting ? (
+              <>
+                <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span className="hidden sm:inline">Exporting...</span>
+              </>
+            ) : (
+              <>
+                <Download size={12} className="sm:w-3.5 sm:h-3.5" />
+                <span className="hidden sm:inline">Export CSV</span>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Results Count */}
@@ -654,30 +725,40 @@ const InventoryTools = () => {
         <div className={`${isDark ? 'bg-slate-800/50' : 'bg-white'} rounded-xl border ${isDark ? 'border-slate-700' : 'border-gray-200'} shadow-lg overflow-hidden`}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className={`${isDark ? 'bg-slate-700/50' : 'bg-gray-50'} border-b ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+              <thead className="bg-slate-900/95 backdrop-blur-sm sticky top-0 z-10">
                 <tr>
-                  <th className={`px-6 py-3 text-left text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap border-b border-slate-700">
                     Foto
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider border-b border-slate-700">
                     Nama Tools
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider border-b border-slate-700">
                     Stock Detail
                   </th>
-                  <th className={`px-6 py-3 text-center text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
+                  <th className="px-3 py-2.5 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap border-b border-slate-700">
                     Stock
                   </th>
-                  <th className={`px-6 py-3 text-center text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
+                  <th className="px-3 py-2.5 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap border-b border-slate-700">
                     Status
                   </th>
-                  <th className={`px-6 py-3 text-center text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
+                  <th className="px-3 py-2.5 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider sticky right-0 bg-slate-900/95 backdrop-blur-sm z-20 w-24 border-b border-slate-700">
                     Aksi
                   </th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-gray-200'}`}>
-                {filteredTools.map((tool, index) => {
+              <tbody>
+                {filteredTools.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="px-4 py-8 text-center text-slate-400">
+                      <div className="flex flex-col items-center gap-2">
+                        <Package size={32} className="text-slate-500" />
+                        <p className="text-sm">{searchTerm ? 'Tidak ada tools yang ditemukan' : 'Belum ada tools'}</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTools.map((tool, index) => {
                   const toolName = tool.tools_name || tool['Part Name'] || tool['TOOLS NAME'] || 'Unknown';
                   const stock = tool.current_stock || tool['Total'] || tool['CURRENT STOCK'] || 0;
                   const stockStatus = getStockStatus(stock);
@@ -688,10 +769,15 @@ const InventoryTools = () => {
                   const stockOld = tool.stock_old || tool['OLD'] || 0;
 
                   return (
-                    <tr key={index} className={`${isDark ? 'hover:bg-slate-700/30' : 'hover:bg-gray-50'} transition-colors`}>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <tr
+                      key={index}
+                      className={`hover:bg-slate-700/40 transition-colors ${
+                        index % 2 === 0 ? 'bg-slate-800/50' : 'bg-slate-800/30'
+                      }`}
+                    >
+                      <td className="px-3 py-2.5 whitespace-nowrap">
                         <div
-                          className="w-16 h-16 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-purple-500 transition-all bg-slate-800"
+                          className="w-12 h-12 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-purple-500 transition-all bg-slate-800"
                           onClick={() => {
                             setSelectedTool(tool);
                             setShowDetailModal(true);
@@ -708,82 +794,74 @@ const InventoryTools = () => {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500/20 to-blue-500/20">
-                              <Camera className="text-slate-400" size={24} />
+                              <Camera className="text-slate-400" size={20} />
                             </div>
                           )}
                         </div>
                       </td>
-                      <td className={`px-6 py-4 ${isDark ? 'text-slate-100' : 'text-gray-900'} font-medium`}>
-                        {toolName}
+                      <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-100 font-medium" title={toolName || ''}>
+                        {toolName || '-'}
                       </td>
-                      <td className={`px-6 py-4 ${isDark ? 'text-slate-200' : 'text-gray-800'} text-sm max-w-xs`}>
-                        <div className="line-clamp-2 mb-1">
-                          {stockDetail}
+                      <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-100 max-w-xs">
+                        <div className="line-clamp-2 mb-1" title={stockDetail || ''}>
+                          {stockDetail || '-'}
                         </div>
                         {(stockNew > 0 || stockOld > 0) && (
                           <div className="text-xs mt-1">
                             {stockNew > 0 && <span className="text-green-400 font-medium">New: {stockNew}</span>}
-                            {stockNew > 0 && stockOld > 0 && <span className={`mx-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>•</span>}
+                            {stockNew > 0 && stockOld > 0 && <span className="mx-1 text-slate-400">•</span>}
                             {stockOld > 0 && <span className="text-blue-400 font-medium">Old: {stockOld}</span>}
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className={`text-lg font-bold ${stockStatus.color}`}>
+                      <td className="px-3 py-2.5 text-xs sm:text-sm whitespace-nowrap text-center">
+                        <div className={`text-sm font-bold ${stockStatus.color}`}>
                           {stock}
                         </div>
-                        <div className={`text-xs mt-1 font-medium ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
+                        <div className="text-xs mt-1 font-medium text-slate-300">
                           {uom}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${stockStatus.bg} ${stockStatus.color}`}>
+                      <td className="px-3 py-2.5 text-xs sm:text-sm whitespace-nowrap text-center">
+                        <span className="inline-flex items-center px-2 py-1 text-xs rounded font-medium border bg-slate-700/50 text-slate-300 border-slate-600/30">
                           {stockStatus.label}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="px-3 py-2.5 sticky right-0 bg-slate-800/95 backdrop-blur-sm z-10">
+                        <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => {
                               setSelectedTool(tool);
                               setShowDetailModal(true);
                             }}
-                            className={`p-2 rounded-lg transition-all ${
-                              isDark
-                                ? 'bg-purple-600/20 hover:bg-purple-600/30 text-purple-400'
-                                : 'bg-purple-50 hover:bg-purple-100 text-purple-600'
-                            }`}
+                            className="p-1.5 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
                             title="Lihat Detail"
+                            aria-label={`View details for ${toolName}`}
                           >
-                            <Eye size={16} />
+                            <Eye size={14} />
                           </button>
                           <button
                             onClick={() => openModal(tool)}
-                            className={`p-2 rounded-lg transition-all ${
-                              isDark
-                                ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
-                                : 'bg-blue-50 hover:bg-blue-100 text-blue-600'
-                            }`}
+                            className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                             title="Edit"
+                            aria-label={`Edit ${toolName}`}
                           >
-                            <Edit size={16} />
+                            <Edit size={14} />
                           </button>
                           <button
                             onClick={() => handleDelete(tool)}
-                            className={`p-2 rounded-lg transition-all ${
-                              isDark
-                                ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400'
-                                : 'bg-red-50 hover:bg-red-100 text-red-600'
-                            }`}
+                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
                             title="Hapus"
+                            aria-label={`Delete ${toolName}`}
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
                     </tr>
                   );
-                })}
+                })
+                )}
               </tbody>
             </table>
           </div>

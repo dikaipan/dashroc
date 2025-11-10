@@ -4,7 +4,8 @@ import { useCrud } from "../hooks/useCrud.js";
 import { useMachineFilters } from "../hooks/useMachineFilters.js";
 import { useMachineKPIs } from "../hooks/useMachineKPIs.js";
 import { useMachineHandlers } from "../hooks/useMachineHandlers.js";
-import { exportMachinesToCSV } from "../utils/machineUtils.js";
+import { useMachineExport } from "../hooks/useExport.js";
+import toast from 'react-hot-toast';
 // Import only needed icons for better tree-shaking
 import { 
   Search, Maximize, Minimize, Download, 
@@ -12,7 +13,8 @@ import {
   Edit, Trash2, X, Hash, 
   Home, User, MapPin, 
   Calendar, Settings, 
-  AlertCircle, Info 
+  AlertCircle, Info, Filter, 
+  CheckCircle, XCircle
 } from "react-feather";
 
 // Import Recharts - Vite already handles code splitting for this library
@@ -30,9 +32,11 @@ export default function Machines() {
     primaryKey: 'wsid',
     eventName: 'machineDataChanged'
   });
+  const { handleExport, isExporting } = useMachineExport();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("all");
-  const [sortValue, setSortValue] = useState("");
+  const [customerFilter, setCustomerFilter] = useState("");
+  const [regionFilter, setRegionFilter] = useState("");
+  const [warrantyFilter, setWarrantyFilter] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedMachines, setSelectedMachines] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -104,7 +108,7 @@ export default function Machines() {
   // Reset page when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [sortBy, sortValue]);
+  }, [customerFilter, regionFilter, warrantyFilter, debouncedSearch]);
 
   // Helper function to get field icon
   const getFieldIcon = useCallback((field) => {
@@ -283,7 +287,12 @@ export default function Machines() {
   }, [allMachineFields]);
 
   // Use custom hooks for business logic
-  const filteredMachines = useMachineFilters(machines, { debouncedSearch, sortBy, sortValue });
+  const filteredMachines = useMachineFilters(machines, { 
+    debouncedSearch, 
+    customerFilter, 
+    regionFilter, 
+    warrantyFilter 
+  });
   
   // Pagination
   const totalPages = Math.ceil(filteredMachines.length / itemsPerPage);
@@ -696,22 +705,35 @@ export default function Machines() {
     setSearchTerm(e.target.value);
   };
 
-  const handleSortBy = (sort) => {
-    setSortBy(sort);
-    setSortValue("");
+  // Clear all filters
+  const handleClearAllFilters = () => {
+    setCustomerFilter("");
+    setRegionFilter("");
+    setWarrantyFilter("");
+    setSearchTerm("");
   };
 
-  const handleSortValue = (value) => {
-    setSortValue(value);
+  // Clear specific filter
+  const handleClearFilter = (filterType) => {
+    if (filterType === "customer") {
+      setCustomerFilter("");
+    } else if (filterType === "region") {
+      setRegionFilter("");
+    } else if (filterType === "warranty") {
+      setWarrantyFilter("");
+    } else if (filterType === "search") {
+      setSearchTerm("");
+    }
   };
+
+  // Check if any filter is active
+  const hasActiveFilters = customerFilter || regionFilter || warrantyFilter || searchTerm;
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
 
-  const handleExport = () => {
-    exportMachinesToCSV(filteredMachines);
-  };
+  // Export is now handled by useMachineExport hook
 
   const handleUploadCSV = async (event) => {
     const file = event.target.files[0];
@@ -1286,278 +1308,546 @@ export default function Machines() {
       
       </div>
 
-      {/* Filter Buttons */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => handleSortBy("all")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              sortBy === "all"
-                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-            }`}
-          >
-            Semua
-          </button>
-          <button
-            onClick={() => handleSortBy("region")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              sortBy === "region"
-                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-            }`}
-          >
-            Region
-          </button>
-          <button
-            onClick={() => handleSortBy("area_group")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              sortBy === "area_group"
-                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-            }`}
-          >
-            Area Group
-          </button>
-          <button
-            onClick={() => handleSortBy("warranty")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              sortBy === "warranty"
-                ? 'bg-blue-500 text-white shadow-lg shadow-lg shadow-blue-500/30'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-            }`}
-          >
-            Status Garansi
-          </button>
-          <button
-            onClick={() => handleSortBy("maintenance")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              sortBy === "maintenance"
-                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-            }`}
-          >
-            Maintenance
-          </button>
-          <button
-            onClick={() => handleSortBy("customer")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              sortBy === "customer"
-                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-            }`}
-          >
-            Customer
-          </button>
-        </div>
+      {/* Filter Section - Compact Design */}
+      <div className="bg-slate-800/50 rounded-lg border border-slate-700 p-3">
+        {/* Compact Filter Row */}
+        <div className="flex flex-wrap items-end gap-3">
+          {/* Customer Filter */}
+          <div className="flex-1 min-w-[160px] sm:min-w-[180px]">
+            <label className="block text-xs text-slate-400 mb-1.5 font-medium">👤 Customer</label>
+            <select
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              aria-label="Filter by customer"
+            >
+              <option value="">-- Semua Customer --</option>
+              {[...new Set(machines.map(m => m.customer).filter(Boolean))].sort().map(customer => (
+                <option key={customer} value={customer}>{customer}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* Dynamic Dropdown */}
-        {sortBy !== "all" && (
-          <select
-            value={sortValue}
-            onChange={(e) => handleSortValue(e.target.value)}
-            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 min-w-[200px]"
-          >
-            <option value="">Semua {sortBy === "region" ? "Region" : sortBy === "area_group" ? "Area Group" : sortBy === "warranty" ? "Status" : sortBy === "maintenance" ? "Maintenance" : "Customer"}</option>
-            {sortBy === "region" && (
-              [...new Set(machines.map(m => m.region).filter(Boolean))].sort().map(region => (
+          {/* Region Filter */}
+          <div className="flex-1 min-w-[160px] sm:min-w-[180px]">
+            <label className="block text-xs text-slate-400 mb-1.5 font-medium">📍 Region</label>
+            <select
+              value={regionFilter}
+              onChange={(e) => setRegionFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              aria-label="Filter by region"
+            >
+              <option value="">-- Semua Region --</option>
+              {[...new Set(machines.map(m => m.region).filter(Boolean))].sort().map(region => (
                 <option key={region} value={region}>{region}</option>
-              ))
-            )}
-            {sortBy === "area_group" && (
-              [...new Set(machines.map(m => m.area_group).filter(Boolean))].sort().map(area => (
-                <option key={area} value={area}>{area}</option>
-              ))
-            )}
-            {sortBy === "warranty" && (
+              ))}
+            </select>
+          </div>
+
+          {/* Warranty Status Filter */}
+          <div className="flex-1 min-w-[160px] sm:min-w-[180px]">
+            <label className="block text-xs text-slate-400 mb-1.5 font-medium">⚠️ Status Garansi</label>
+            <select
+              value={warrantyFilter}
+              onChange={(e) => setWarrantyFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              aria-label="Filter by warranty status"
+            >
+              <option value="">-- Semua Status --</option>
+              <option value="On Warranty">✅ Aktif</option>
+              <option value="Out Of Warranty">❌ Expired</option>
+            </select>
+          </div>
+
+          {/* Active Filters Info & Clear Button */}
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
               <>
-                <option value="On Warranty">On Warranty</option>
-                <option value="Out Of Warranty">Out Of Warranty</option>
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-500/20 text-blue-400 rounded text-xs whitespace-nowrap">
+                  <span>{filteredMachines.length}</span>
+                  <span className="text-slate-400">hasil</span>
+                </div>
+                <button
+                  onClick={handleClearAllFilters}
+                  className="px-2.5 py-1.5 text-xs text-slate-400 hover:text-red-400 transition-colors rounded hover:bg-slate-700/50 flex items-center gap-1"
+                  title="Hapus semua filter"
+                >
+                  <X size={14} />
+                  <span className="hidden sm:inline">Clear</span>
+                </button>
               </>
             )}
-            {sortBy === "maintenance" && (
-              [...new Set(machines.map(m => m.maintenance_status).filter(Boolean))].sort().map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))
+          </div>
+        </div>
+
+        {/* Active Filter Chips - Compact */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap gap-1.5 items-center mt-2.5 pt-2.5 border-t border-slate-700/50">
+            {customerFilter && (
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs">
+                <span className="truncate max-w-[120px]">
+                  👤 {customerFilter.length > 15 ? customerFilter.substring(0, 15) + "..." : customerFilter}
+                </span>
+                <button
+                  onClick={() => handleClearFilter("customer")}
+                  className="hover:text-blue-300 transition-colors ml-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </div>
             )}
-            {sortBy === "customer" && (
-              [...new Set(machines.map(m => m.customer).filter(Boolean))].sort().map(customer => (
-                <option key={customer} value={customer}>{customer}</option>
-              ))
+            {regionFilter && (
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs">
+                <span className="truncate max-w-[120px]">
+                  📍 {regionFilter.length > 15 ? regionFilter.substring(0, 15) + "..." : regionFilter}
+                </span>
+                <button
+                  onClick={() => handleClearFilter("region")}
+                  className="hover:text-blue-300 transition-colors ml-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </div>
             )}
-          </select>
+            {warrantyFilter && (
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">
+                <span>⚠️ {warrantyFilter === "On Warranty" ? "Aktif" : "Expired"}</span>
+                <button
+                  onClick={() => handleClearFilter("warranty")}
+                  className="hover:text-green-300 transition-colors ml-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            )}
+            {searchTerm && (
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs">
+                <Search size={10} className="inline" />
+                <span className="truncate max-w-[100px]">"{searchTerm}"</span>
+                <button
+                  onClick={() => handleClearFilter("search")}
+                  className="hover:text-purple-300 transition-colors ml-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Table Section */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-        {/* Table Header with Search & Actions */}
-        <div className="p-4 border-b border-slate-700 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-100">Data Mesin</h2>
-              <p className="text-xs text-slate-400 mt-0.5">{filteredMachines.length} dari {machines.length} mesin</p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setModalMode("create");
-                  const initialData = createInitialFormData();
-                  setFormData(initialData);
-                  setCrudShowModal(true);
-                }}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
-              >
-                <span className="text-sm">+</span> Tambah Mesin
-              </button>
-              <button
-                onClick={handleExport}
-                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
-              >
-                <Download size={14} /> Export CSV
-              </button>
-              <label className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer">
-                <Upload size={14} /> {uploadingCSV ? 'Uploading...' : 'Upload CSV'}
+      {/* Table Section - Normal View */}
+      {!isFullscreen && (
+        <>
+          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+            {/* Table Header with Search & Actions */}
+            <div className="p-4 border-b border-slate-700 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-100">Data Mesin</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">{filteredMachines.length} dari {machines.length} mesin</p>
+                </div>
+                <div className="flex gap-1.5 sm:gap-2 flex-wrap">
+                  <button
+                    onClick={() => {
+                      setModalMode("create");
+                      const initialData = createInitialFormData();
+                      setFormData(initialData);
+                      setCrudShowModal(true);
+                    }}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1 sm:gap-1.5"
+                  >
+                    <span className="text-xs sm:text-sm">+</span> <span className="hidden sm:inline">Tambah</span> <span className="sm:hidden">+</span>
+                  </button>
+                  <button
+                    onClick={() => handleExport(filteredMachines, null, 'mesin')}
+                    disabled={filteredMachines.length === 0 || isExporting}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1 sm:gap-1.5"
+                    title={filteredMachines.length === 0 ? "Tidak ada data untuk diekspor" : "Export data ke CSV"}
+                  >
+                    {isExporting ? (
+                      <>
+                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span className="hidden sm:inline">Exporting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download size={12} className="sm:w-3.5 sm:h-3.5" />
+                        <span className="hidden sm:inline">Export CSV</span>
+                      </>
+                    )}
+                  </button>
+                  <label className="px-2 sm:px-3 py-1 sm:py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1 sm:gap-1.5 cursor-pointer">
+                    <Upload size={12} className="sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">{uploadingCSV ? 'Uploading...' : 'Upload CSV'}</span>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleUploadCSV}
+                      className="hidden"
+                      disabled={uploadingCSV}
+                    />
+                  </label>
+                  <button
+                    onClick={() => setIsFullscreen(true)}
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1 sm:gap-1.5"
+                    title="Fullscreen"
+                  >
+                    <Maximize size={12} className="sm:w-3.5 sm:h-3.5" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
                 <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleUploadCSV}
-                  className="hidden"
-                  disabled={uploadingCSV}
+                  type="text"
+                  placeholder="Cari mesin berdasarkan branch, WSID, customer..."
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
                 />
-              </label>
-              <button
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
-                title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-              >
-                {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-              </button>
+              </div>
             </div>
-          </div>
-          
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
-            <input
-              type="text"
-              placeholder="Cari mesin berdasarkan branch, WSID, customer..."
-              value={searchTerm}
-              onChange={handleSearch}
-              className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
-            />
-          </div>
-        </div>
-        
-        {/* Table Content */}
-        <div className="overflow-auto max-h-[600px]">
-        <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-slate-900 sticky top-0">
-            <tr>
-              <th className="px-3 py-2 text-center sticky left-0 bg-slate-900 z-10 w-12">
-                <input
-                  type="checkbox"
-                  checked={selectedMachines.length === paginatedMachines.length && paginatedMachines.length > 0}
-                  onChange={handleSelectAll}
-                  className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
-                />
-              </th>
-              {/* Important columns with fixed width */}
-              <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-32">WSID</th>
-              <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-48">Branch</th>
-              <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-40">Customer</th>
-              <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-32">Type</th>
-              <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-32">City</th>
-              <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-32">Region</th>
-              <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-32">Status</th>
-              <th className="px-3 py-2 text-center text-xs text-slate-300 sticky right-0 bg-slate-900 z-10 w-24">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedMachines.map((m, i) => (
-              <tr key={i} className="border-t border-slate-700 hover:bg-slate-750">
-                <td className="px-3 py-2 text-center sticky left-0 bg-slate-800 z-10">
-                  <input
-                    type="checkbox"
-                    checked={selectedMachines.includes(m.wsid)}
-                    onChange={() => handleSelectOne(m.wsid)}
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
-                  />
-                </td>
-                <td className="px-3 py-2 text-sm text-slate-100 font-mono truncate" title={m.wsid || ''}>{m.wsid || '-'}</td>
-                <td className="px-3 py-2 text-sm text-slate-300 truncate" title={m.branch_name || ''}>{m.branch_name || '-'}</td>
-                <td className="px-3 py-2 text-sm text-slate-300 truncate" title={m.customer || ''}>{m.customer || '-'}</td>
-                <td className="px-3 py-2 text-sm text-slate-300 truncate" title={m.machine_type || ''}>{m.machine_type || '-'}</td>
-                <td className="px-3 py-2 text-sm text-slate-300 truncate" title={m.city || ''}>{m.city || '-'}</td>
-                <td className="px-3 py-2 text-sm">
-                  <span className="px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-400 whitespace-nowrap">
-                    {m.region || '-'}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-sm">
-                  <span className={`px-2 py-1 text-xs rounded whitespace-nowrap ${
-                    m.machine_status === "On Warranty" || m.machine_status === "In Warranty" 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-red-500/20 text-red-400'
-                  }`}>
-                    {m.machine_status || '-'}
-                  </span>
-                </td>
-                <td className="px-3 py-2 sticky right-0 bg-slate-800 z-10">
-                  <div className="flex items-center justify-center gap-2">
-                    <button
-                      onClick={() => handleEdit(m)}
-                      className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors"
-                      title="Edit"
-                    >
-                      <Edit size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(m)}
-                      className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-        </div>
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg">
-          <div className="text-sm text-slate-400">
-            Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredMachines.length)} dari {filteredMachines.length} mesin
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeft size={16} className="text-slate-300" />
-            </button>
-            <span className="text-sm text-slate-300">
-              Halaman {currentPage} dari {totalPages}
-            </span>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronRight size={16} className="text-slate-300" />
-            </button>
             
+            {/* Table Content */}
+            <div className="overflow-auto max-h-[600px]">
+            <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-900/95 backdrop-blur-sm sticky top-0 z-10">
+                <tr>
+                  <th className="px-3 py-2.5 text-center sticky left-0 bg-slate-900/95 backdrop-blur-sm z-20 w-12 border-b border-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={selectedMachines.length === paginatedMachines.length && paginatedMachines.length > 0}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-slate-800"
+                      aria-label="Select all machines"
+                    />
+                  </th>
+                  {/* Important columns with fixed width */}
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap w-32 border-b border-slate-700">WSID</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap w-48 border-b border-slate-700">Branch</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap w-40 border-b border-slate-700">Customer</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap w-32 border-b border-slate-700">Type</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap w-32 border-b border-slate-700">City</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap w-32 border-b border-slate-700">Region</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider whitespace-nowrap w-32 border-b border-slate-700">Status</th>
+                  <th className="px-3 py-2.5 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider sticky right-0 bg-slate-900/95 backdrop-blur-sm z-20 w-24 border-b border-slate-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700/50">
+                {paginatedMachines.length > 0 ? (
+                  paginatedMachines.map((m, i) => (
+                    <tr 
+                      key={i} 
+                      className={`hover:bg-slate-700/40 transition-colors ${
+                        i % 2 === 0 ? 'bg-slate-800/50' : 'bg-slate-800/30'
+                      }`}
+                    >
+                      <td className="px-3 py-2.5 text-center sticky left-0 bg-slate-800/95 backdrop-blur-sm z-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedMachines.includes(m.wsid)}
+                          onChange={() => handleSelectOne(m.wsid)}
+                          className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-slate-800"
+                          aria-label={`Select machine ${m.wsid}`}
+                        />
+                      </td>
+                      <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-100 font-mono truncate" title={m.wsid || ''}>{m.wsid || '-'}</td>
+                      <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-300 truncate" title={m.branch_name || ''}>{m.branch_name || '-'}</td>
+                      <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-300 truncate" title={m.customer || ''}>{m.customer || '-'}</td>
+                      <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-300 truncate" title={m.machine_type || ''}>{m.machine_type || '-'}</td>
+                      <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-300 truncate" title={m.city || ''}>{m.city || '-'}</td>
+                      <td className="px-3 py-2.5 text-xs sm:text-sm">
+                        <span className="inline-flex items-center px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 whitespace-nowrap">
+                          {m.region || '-'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs sm:text-sm">
+                        <span className={`inline-flex items-center px-2 py-1 text-xs rounded font-medium border whitespace-nowrap ${
+                          m.machine_status === "On Warranty" || m.machine_status === "In Warranty" 
+                            ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                            : 'bg-red-500/20 text-red-400 border-red-500/30'
+                        }`}>
+                          {m.machine_status === "On Warranty" || m.machine_status === "In Warranty" ? '✅' : '⚠️'} {m.machine_status || '-'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 sticky right-0 bg-slate-800/95 backdrop-blur-sm z-10">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleEdit(m)}
+                            className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            title="Edit"
+                            aria-label={`Edit machine ${m.wsid}`}
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(m)}
+                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+                            title="Delete"
+                            aria-label={`Delete machine ${m.wsid}`}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="9" className="px-4 py-12 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="text-5xl">📭</div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-200 mb-1">Tidak ada mesin ditemukan</p>
+                          <p className="text-xs text-slate-400">Coba ubah filter atau hapus beberapa filter untuk melihat hasil</p>
+                        </div>
+                        {(customerFilter || regionFilter || warrantyFilter || searchTerm) && (
+                          <button
+                            onClick={handleClearAllFilters}
+                            className="mt-2 px-4 py-2 text-xs font-medium text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
+                          >
+                            Hapus Semua Filter
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+            </div>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-700 flex-shrink-0 bg-slate-800/50">
+              <div className="text-xs sm:text-sm text-slate-400 text-center sm:text-left">
+                Menampilkan <span className="font-semibold text-slate-300">{((currentPage - 1) * itemsPerPage) + 1}</span> - <span className="font-semibold text-slate-300">{Math.min(currentPage * itemsPerPage, filteredMachines.length)}</span> dari <span className="font-semibold text-slate-300">{filteredMachines.length.toLocaleString()}</span> mesin
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={16} className="text-slate-300" />
+                </button>
+                <span className="text-xs sm:text-sm text-slate-300 px-2">
+                  Halaman {currentPage} dari {totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={16} className="text-slate-300" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Fullscreen Table Overlay */}
+      {isFullscreen && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900 flex flex-col" style={{ zIndex: 9999 }}>
+          {/* Fullscreen Header */}
+          <div className="flex justify-between items-center p-4 border-b border-slate-700 flex-shrink-0 bg-slate-800">
+            <div className="flex items-center gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-100">Data Mesin - Fullscreen</h2>
+                <p className="text-xs text-slate-400 mt-0.5">{filteredMachines.length} dari {machines.length} mesin</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleExport(filteredMachines, null, 'mesin')}
+                disabled={filteredMachines.length === 0 || isExporting}
+                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1.5"
+                title={filteredMachines.length === 0 ? "Tidak ada data untuk diekspor" : "Export data ke CSV"}
+              >
+                {isExporting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Exporting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={14} />
+                    <span>Export CSV</span>
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setIsFullscreen(false)}
+                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                title="Exit Fullscreen"
+              >
+                <Minimize size={14} /> Keluar Fullscreen
+              </button>
+            </div>
+          </div>
+
+          {/* Fullscreen Search Bar */}
+          <div className="p-4 border-b border-slate-700 flex-shrink-0 bg-slate-800">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Cari mesin berdasarkan branch, WSID, customer..."
+                value={searchTerm}
+                onChange={handleSearch}
+                className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Fullscreen Table Content */}
+          <div className="flex-1 overflow-hidden flex flex-col bg-slate-800">
+            <div className="flex-1 overflow-auto">
+              <div className="overflow-x-auto h-full">
+                <table className="w-full">
+                  <thead className="bg-slate-900 sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-center sticky left-0 bg-slate-900 z-10 w-12">
+                        <input
+                          type="checkbox"
+                          checked={selectedMachines.length === paginatedMachines.length && paginatedMachines.length > 0}
+                          onChange={handleSelectAll}
+                          className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
+                        />
+                      </th>
+                      {/* Important columns with fixed width */}
+                      <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-32">WSID</th>
+                      <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-48">Branch</th>
+                      <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-40">Customer</th>
+                      <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-32">Type</th>
+                      <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-32">City</th>
+                      <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-32">Region</th>
+                      <th className="px-3 py-2 text-left text-xs text-slate-300 whitespace-nowrap w-32">Status</th>
+                      <th className="px-3 py-2 text-center text-xs text-slate-300 sticky right-0 bg-slate-900 z-10 w-24">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/50">
+                    {paginatedMachines.length > 0 ? (
+                      paginatedMachines.map((m, i) => (
+                        <tr 
+                          key={i} 
+                          className={`hover:bg-slate-700/40 transition-colors ${
+                            i % 2 === 0 ? 'bg-slate-800/50' : 'bg-slate-800/30'
+                          }`}
+                        >
+                          <td className="px-3 py-2.5 text-center sticky left-0 bg-slate-800/95 backdrop-blur-sm z-10">
+                            <input
+                              type="checkbox"
+                              checked={selectedMachines.includes(m.wsid)}
+                              onChange={() => handleSelectOne(m.wsid)}
+                              className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-slate-800"
+                              aria-label={`Select machine ${m.wsid}`}
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-100 font-mono truncate" title={m.wsid || ''}>{m.wsid || '-'}</td>
+                          <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-300 truncate" title={m.branch_name || ''}>{m.branch_name || '-'}</td>
+                          <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-300 truncate" title={m.customer || ''}>{m.customer || '-'}</td>
+                          <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-300 truncate" title={m.machine_type || ''}>{m.machine_type || '-'}</td>
+                          <td className="px-3 py-2.5 text-xs sm:text-sm text-slate-300 truncate" title={m.city || ''}>{m.city || '-'}</td>
+                          <td className="px-3 py-2.5 text-xs sm:text-sm">
+                            <span className="inline-flex items-center px-2 py-1 text-xs rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 whitespace-nowrap">
+                              {m.region || '-'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-xs sm:text-sm">
+                            <span className={`inline-flex items-center px-2 py-1 text-xs rounded font-medium border whitespace-nowrap ${
+                              m.machine_status === "On Warranty" || m.machine_status === "In Warranty" 
+                                ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                                : 'bg-red-500/20 text-red-400 border-red-500/30'
+                            }`}>
+                              {m.machine_status === "On Warranty" || m.machine_status === "In Warranty" ? '✅' : '⚠️'} {m.machine_status || '-'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 sticky right-0 bg-slate-800/95 backdrop-blur-sm z-10">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleEdit(m)}
+                                className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                title="Edit"
+                                aria-label={`Edit machine ${m.wsid}`}
+                              >
+                                <Edit size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(m)}
+                                className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+                                title="Delete"
+                                aria-label={`Delete machine ${m.wsid}`}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="9" className="px-4 py-12 text-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="text-5xl">📭</div>
+                            <div>
+                              <p className="text-sm font-semibold text-slate-200 mb-1">Tidak ada mesin ditemukan</p>
+                              <p className="text-xs text-slate-400">Coba ubah filter atau hapus beberapa filter untuk melihat hasil</p>
+                            </div>
+                            {(customerFilter || regionFilter || warrantyFilter || searchTerm) && (
+                              <button
+                                onClick={handleClearAllFilters}
+                                className="mt-2 px-4 py-2 text-xs font-medium text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
+                              >
+                                Hapus Semua Filter
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Fullscreen Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-700 flex-shrink-0 bg-slate-800">
+                <div className="text-sm text-slate-400">
+                  Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredMachines.length)} dari {filteredMachines.length} mesin
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft size={16} className="text-slate-300" />
+                  </button>
+                  <span className="text-sm text-slate-300">
+                    Halaman {currentPage} dari {totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight size={16} className="text-slate-300" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        
       )}
             {/* CRUD Modal */}
       {crudShowModal && (
@@ -1944,21 +2234,21 @@ export default function Machines() {
                   setCrudShowModal(false);
                   resetForm();
                 }}
-                className="px-6 py-3 bg-slate-700/80 hover:bg-slate-600 text-slate-100 rounded-xl transition-all font-medium shadow-lg hover:shadow-xl hover:scale-105"
+                className="px-3 sm:px-6 py-1.5 sm:py-3 bg-slate-700/80 hover:bg-slate-600 text-slate-100 rounded-xl transition-all text-xs sm:text-sm font-medium shadow-lg hover:shadow-xl hover:scale-105"
               >
                 Batal
               </button>
               <button
                 onClick={handleSave}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl transition-all font-medium shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
+                className="px-3 sm:px-6 py-1.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl transition-all text-xs sm:text-sm font-medium shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-1.5 sm:gap-2"
               >
                 {modalMode === "create" ? (
                   <>
-                    <span>+</span> Tambah Mesin
+                    <span className="text-sm sm:text-base">+</span> <span className="hidden sm:inline">Tambah Mesin</span> <span className="sm:hidden">Tambah</span>
                   </>
                 ) : (
                   <>
-                    <span>✓</span> Simpan Perubahan
+                    <span className="text-sm sm:text-base">✓</span> <span className="hidden sm:inline">Simpan Perubahan</span> <span className="sm:hidden">Simpan</span>
                   </>
                 )}
               </button>

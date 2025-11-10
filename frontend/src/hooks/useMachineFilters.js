@@ -9,14 +9,16 @@ import { useMemo } from 'react';
  * @param {Array} machines - Array of machine objects
  * @param {Object} filters - Filter configuration
  * @param {string} filters.debouncedSearch - Debounced search term
- * @param {string} filters.sortBy - Sort field (region, area_group, warranty, maintenance, customer)
- * @param {string} filters.sortValue - Sort value for filtering
+ * @param {string} filters.customerFilter - Customer filter value
+ * @param {string} filters.regionFilter - Region filter value
+ * @param {string} filters.warrantyFilter - Warranty status filter (On Warranty, Out Of Warranty)
  * @returns {Array} Filtered machines
  */
-export function useMachineFilters(machines, { debouncedSearch, sortBy, sortValue }) {
+export function useMachineFilters(machines, { debouncedSearch, customerFilter, regionFilter, warrantyFilter }) {
   return useMemo(() => {
     let filtered = machines;
     
+    // Apply search filter
     if (debouncedSearch) {
       const search = debouncedSearch.toLowerCase();
       filtered = filtered.filter(m =>
@@ -27,29 +29,32 @@ export function useMachineFilters(machines, { debouncedSearch, sortBy, sortValue
       );
     }
     
-    if (sortBy === "region" && sortValue) {
-      filtered = filtered.filter(m => m.region === sortValue);
-    } else if (sortBy === "area_group" && sortValue) {
-      filtered = filtered.filter(m => m.area_group === sortValue);
-    } else if (sortBy === "warranty" && sortValue) {
+    // Apply customer filter (additive)
+    if (customerFilter) {
+      filtered = filtered.filter(m => m.customer === customerFilter);
+    }
+    
+    // Apply region filter (additive)
+    if (regionFilter) {
+      filtered = filtered.filter(m => m.region === regionFilter);
+    }
+    
+    // Apply warranty status filter (additive)
+    if (warrantyFilter) {
       filtered = filtered.filter(m => {
         const status = m.machine_status || '';
-        if (sortValue === 'On Warranty') {
+        if (warrantyFilter === 'On Warranty') {
           // Match both 'In Warranty' and 'On Warranty'
           return status === 'In Warranty' || status === 'On Warranty';
-        } else if (sortValue === 'Out Of Warranty') {
+        } else if (warrantyFilter === 'Out Of Warranty') {
           // Match 'Out Of Warranty' and expired variants
           return status === 'Out Of Warranty' || status.toLowerCase().includes('expired');
         }
-        return status === sortValue;
+        return false;
       });
-    } else if (sortBy === "maintenance" && sortValue) {
-      filtered = filtered.filter(m => m.maintenance_status === sortValue);
-    } else if (sortBy === "customer" && sortValue) {
-      filtered = filtered.filter(m => m.customer === sortValue);
     }
     
     return filtered;
-  }, [machines, debouncedSearch, sortBy, sortValue]);
+  }, [machines, debouncedSearch, customerFilter, regionFilter, warrantyFilter]);
 }
 

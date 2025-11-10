@@ -1,24 +1,26 @@
 /**
- * Utility functions for machine data processing
- * Separates data processing logic from components
+ * Generic CSV Export Utility
+ * Provides consistent export functionality with toast notifications
+ * 
+ * @module exportUtils
  */
 
 /**
- * Export machines to CSV
- * @param {Array} machines - Array of machine objects
- * @param {string} [fileName] - Optional custom file name (without extension and date)
- * @returns {void}
+ * Generic export function for any data array
+ * @param {Array} data - Array of objects to export
+ * @param {string} entityName - Name of the entity (e.g., 'engineers', 'machines', 'stock_parts')
+ * @param {string} [fileName] - Optional custom file name suffix (without extension and date)
+ * @returns {{success: boolean, fileName?: string, count?: number, error?: string}}
  */
-export function exportMachinesToCSV(machines, fileName = null) {
-  if (!machines || machines.length === 0) {
+export function exportToCSV(data, entityName, fileName = null) {
+  if (!data || data.length === 0) {
     return { success: false, error: 'No data to export' };
   }
 
-  // Collect ALL unique keys from ALL machines to ensure no field is missed
-  // Some machines might have different fields, so we need to check all of them
+  // Collect ALL unique keys from ALL items to ensure no field is missed
   const allKeysSet = new Set();
-  machines.forEach(m => {
-    Object.keys(m).forEach(key => {
+  data.forEach(item => {
+    Object.keys(item).forEach(key => {
       allKeysSet.add(key);
     });
   });
@@ -27,17 +29,16 @@ export function exportMachinesToCSV(machines, fileName = null) {
   const allKeys = Array.from(allKeysSet).sort();
   
   // Export with original field names (snake_case) to maintain compatibility with CSV import
-  // Backend normalizes CSV columns to snake_case, so we use the same format for export
-  const exportData = machines.map(m => {
+  const exportData = data.map(item => {
     const row = {};
     allKeys.forEach(key => {
-      // Use original field name to maintain compatibility with CSV import
       // Include all fields, even if empty
-      row[key] = m[key] !== undefined && m[key] !== null ? String(m[key]) : '';
+      row[key] = item[key] !== undefined && item[key] !== null ? String(item[key]) : '';
     });
     return row;
   });
-  
+
+  // Convert to CSV
   const headers = allKeys;
   const csvContent = [
     headers.join(","),
@@ -47,18 +48,18 @@ export function exportMachinesToCSV(machines, fileName = null) {
       return `"${String(value).replace(/"/g, '""')}"`;
     }).join(","))
   ].join("\n");
-  
+
   // Generate file name
   const dateStr = new Date().toISOString().split('T')[0];
   let finalFileName;
   if (fileName) {
     // Use custom file name with date
-    finalFileName = `machines_${fileName}_${dateStr}.csv`;
+    finalFileName = `${entityName}_${fileName}_${dateStr}.csv`;
   } else {
     // Use default file name
-    finalFileName = `machines_${dateStr}.csv`;
+    finalFileName = `${entityName}_${dateStr}.csv`;
   }
-  
+
   try {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -67,7 +68,7 @@ export function exportMachinesToCSV(machines, fileName = null) {
     link.click();
     // Clean up the object URL after a short delay
     setTimeout(() => URL.revokeObjectURL(link.href), 100);
-    return { success: true, fileName: finalFileName, count: machines.length };
+    return { success: true, fileName: finalFileName, count: data.length };
   } catch (error) {
     console.error('Export error:', error);
     return { success: false, error: error.message || 'Failed to export CSV' };

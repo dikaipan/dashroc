@@ -242,7 +242,7 @@ const getColorWithDensity = (region, engineerCount) => {
 const MapWithRegions = React.memo(function MapWithRegions({ machines, engineers = [], onEngineerClick, isFullscreen = false }) {
   const [map, setMap] = useState(null);
   const [selectedRegion, setSelectedRegion] = useState(null);
-  const [isLegendVisible, setIsLegendVisible] = useState(true);
+  const [isLegendVisible, setIsLegendVisible] = useState(false); // Hide legend by default
   const { theme, isDark } = useTheme();
 
   const areaGroupStats = useMemo(() => {
@@ -546,41 +546,41 @@ const MapWithRegions = React.memo(function MapWithRegions({ machines, engineers 
         />
       </MapContainer>
       
-      {/* Map Legend */}
+      {/* Map Legend - Hidden on mobile by default */}
       {isLegendVisible ? (
-        <div className={`absolute top-4 right-4 z-[100] ${isDark ? 'bg-slate-900/95' : 'bg-white/95'} backdrop-blur-sm rounded-lg border ${isDark ? 'border-slate-700' : 'border-gray-300'} shadow-xl p-4 max-w-xs`}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <div className={`absolute top-2 right-2 sm:top-4 sm:right-4 z-[100] ${isDark ? 'bg-slate-900/95' : 'bg-white/95'} backdrop-blur-sm rounded-lg border ${isDark ? 'border-slate-700' : 'border-gray-300'} shadow-xl p-2 sm:p-4 max-w-[160px] sm:max-w-xs text-xs sm:text-sm`}>
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <h3 className={`font-bold text-xs sm:text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
               🗺️ Legend
             </h3>
             <button
               onClick={() => setIsLegendVisible(false)}
-              className={`p-1 rounded hover:${isDark ? 'bg-slate-800' : 'bg-gray-100'} transition-colors ${isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`p-0.5 sm:p-1 rounded hover:${isDark ? 'bg-slate-800' : 'bg-gray-100'} transition-colors ${isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
               title="Sembunyikan Legend"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
         
         {/* Region Colors */}
-        <div className="mb-4">
-          <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Region</p>
-          <div className="space-y-1.5">
+        <div className="mb-2 sm:mb-4">
+          <p className={`text-xs font-semibold mb-1 sm:mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Region</p>
+          <div className="space-y-1 sm:space-y-1.5">
             {['Region 1', 'Region 2', 'Region 3'].map(region => {
               const color = getColorByRegion(region);
               const stats = regionStats[region];
               return (
-                <div key={region} className="flex items-center gap-2 text-xs">
+                <div key={region} className="flex items-center gap-1.5 sm:gap-2 text-xs">
                   <div 
-                    className="w-4 h-4 rounded border-2 border-white shadow-sm"
+                    className="w-3 h-3 sm:w-4 sm:h-4 rounded border border-white shadow-sm flex-shrink-0"
                     style={{ backgroundColor: color }}
                   ></div>
-                  <span className={`flex-1 ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>{region}</span>
+                  <span className={`flex-1 truncate ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>{region}</span>
                   {stats && (
-                    <span className={`font-semibold ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
-                      {stats.provinceCount} prov
+                    <span className={`font-semibold text-xs flex-shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
+                      {stats.provinceCount}
                     </span>
                   )}
                 </div>
@@ -589,29 +589,29 @@ const MapWithRegions = React.memo(function MapWithRegions({ machines, engineers 
           </div>
         </div>
         
-        {/* Top Provinces by Machines */}
+        {/* Top Provinces by Machines - Hide on mobile */}
         {topProvinces.length > 0 && (
-          <div>
-            <p className={`text-xs font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
-              🏆 Top 5 Provinsi (Mesin)
+          <div className="hidden sm:block">
+            <p className={`text-xs font-semibold mb-1 sm:mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
+              🏆 Top 5 Provinsi
             </p>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            <div className="space-y-1 sm:space-y-1.5 max-h-32 sm:max-h-48 overflow-y-auto">
               {topProvinces.map((province, idx) => {
                 const regionColor = getColorByRegion(province.region);
                 return (
                   <div 
                     key={idx} 
-                    className={`flex items-center gap-2 text-xs p-1.5 rounded ${isDark ? 'bg-slate-800/50' : 'bg-gray-50'} hover:${isDark ? 'bg-slate-800' : 'bg-gray-100'} transition-colors`}
+                    className={`flex items-center gap-1.5 sm:gap-2 text-xs p-1 sm:p-1.5 rounded ${isDark ? 'bg-slate-800/50' : 'bg-gray-50'} hover:${isDark ? 'bg-slate-800' : 'bg-gray-100'} transition-colors`}
                   >
-                    <span className={`font-bold w-5 text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    <span className={`font-bold w-4 sm:w-5 text-center flex-shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
                       {idx + 1}
                     </span>
                     <div 
-                      className="w-3 h-3 rounded border border-white/50"
+                      className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded border border-white/50 flex-shrink-0"
                       style={{ backgroundColor: regionColor }}
                     ></div>
                     <div className="flex-1 min-w-0">
-                      <div className={`font-medium truncate ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>
+                      <div className={`font-medium truncate text-xs ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>
                         {province.name}
                       </div>
                       <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
@@ -628,10 +628,10 @@ const MapWithRegions = React.memo(function MapWithRegions({ machines, engineers 
       ) : (
         <button
           onClick={() => setIsLegendVisible(true)}
-          className={`absolute top-4 right-4 z-[100] ${isDark ? 'bg-slate-900/95 hover:bg-slate-800' : 'bg-white/95 hover:bg-gray-50'} backdrop-blur-sm rounded-lg border ${isDark ? 'border-slate-700' : 'border-gray-300'} shadow-xl p-2 transition-colors`}
+          className={`absolute top-2 right-2 sm:top-4 sm:right-4 z-[100] ${isDark ? 'bg-slate-900/95 hover:bg-slate-800' : 'bg-white/95 hover:bg-gray-50'} backdrop-blur-sm rounded-lg border ${isDark ? 'border-slate-700' : 'border-gray-300'} shadow-xl p-1.5 sm:p-2 transition-colors`}
           title="Tampilkan Legend"
         >
-          <svg className={`w-5 h-5 ${isDark ? 'text-slate-300' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${isDark ? 'text-slate-300' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>

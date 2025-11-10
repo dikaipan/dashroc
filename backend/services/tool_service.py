@@ -53,7 +53,23 @@ class ToolService(BaseService):
         Returns:
             List of all tools as dictionaries
         """
-        df = self._get_dataframe()
+        try:
+            df = self._get_dataframe()
+        except FileNotFoundError as e:
+            print(f"[ERROR ToolService] File not found: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+        except Exception as e:
+            print(f"[ERROR ToolService] Failed to read CSV: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+        
+        # Check if DataFrame is empty
+        if df.empty:
+            print(f"[WARNING ToolService] DataFrame is empty")
+            return []
         
         # Debug: Print available columns
         print(f"[DEBUG ToolService] Available columns: {list(df.columns)}")
@@ -74,50 +90,75 @@ class ToolService(BaseService):
                 part_name_col = possible_names[0]
                 print(f"[DEBUG ToolService] Found part_name column: {part_name_col}")
             else:
-                # Return empty if column not found
-                print(f"[ERROR ToolService] Column 'part_name' not found in stock_detail.csv.")
-                print(f"[ERROR ToolService] Available columns: {list(df.columns)}")
-                return []
+                # Try to find any column that might contain part name
+                # Check common variations
+                for col in df.columns:
+                    if 'part' in col.lower() or 'name' in col.lower() or 'tool' in col.lower():
+                        part_name_col = col
+                        print(f"[WARNING ToolService] Using alternative column '{col}' as part_name")
+                        break
+                else:
+                    # Return empty if column not found
+                    print(f"[ERROR ToolService] Column 'part_name' not found in stock_detail.csv.")
+                    print(f"[ERROR ToolService] Available columns: {list(df.columns)}")
+                    return []
         
         # Filter out empty rows (rows where part_name is empty or NaN)
-        df = df[df[part_name_col].notna()]
-        df = df[df[part_name_col].astype(str).str.strip() != '']
+        try:
+            df = df[df[part_name_col].notna()]
+            df = df[df[part_name_col].astype(str).str.strip() != '']
+        except Exception as e:
+            print(f"[ERROR ToolService] Error filtering rows: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
         
         print(f"[DEBUG ToolService] After filtering empty rows: {df.shape}")
         
         # Convert to list of dictionaries
-        tools = df.to_dict(orient="records")
+        try:
+            tools = df.to_dict(orient="records")
+        except Exception as e:
+            print(f"[ERROR ToolService] Error converting to dict: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
         
         # Normalize column names and add computed fields
         normalized_tools = []
         for tool in tools:
-            # Use snake_case column names (normalized by read_csv_normalized)
-            part_name = str(tool.get(part_name_col, "")).strip()
-            if not part_name:  # Skip empty part names
+            try:
+                # Use snake_case column names (normalized by read_csv_normalized)
+                part_name = str(tool.get(part_name_col, "")).strip()
+                if not part_name or part_name == 'nan':  # Skip empty part names
+                    continue
+                    
+                normalized = {
+                    "id": part_name,  # Use Part Name as ID
+                    "tools_name": part_name,
+                    "current_stock": self._parse_number(tool.get("total", 0)),
+                    "stock_new": self._parse_number(tool.get("new", 0)),
+                    "stock_old": self._parse_number(tool.get("old", 0)),
+                    "stock_detail": str(tool.get("detail_specification", "")).strip(),  # Detail Specification
+                    "photo": str(tool.get("picture", "")).strip(),  # Picture column
+                    "uom": str(tool.get("uom", "Pcs")).strip(),  # Unit of Measure
+                    "remark": str(tool.get("remark", "")).strip(),  # Remark
+                    "description": str(tool.get("detail_specification", "")).strip(),  # Detail Specification as description
+                    "location": str(tool.get("location", "")).strip(),  # Location
+                    # Keep original columns for compatibility (using original CSV names)
+                    "Part Name": part_name,
+                    "Detail Specification": str(tool.get("detail_specification", "")).strip(),
+                    "Picture": str(tool.get("picture", "")).strip(),
+                    "Total": self._parse_number(tool.get("total", 0)),
+                    "NEW": self._parse_number(tool.get("new", 0)),
+                    "OLD": self._parse_number(tool.get("old", 0)),
+                    "UOM": str(tool.get("uom", "Pcs")).strip(),
+                    "Remark": str(tool.get("remark", "")).strip(),
+                }
+                normalized_tools.append(normalized)
+            except Exception as e:
+                print(f"[WARNING ToolService] Error processing tool row: {e}")
                 continue
-                
-            normalized = {
-                "id": part_name,  # Use Part Name as ID
-                "tools_name": part_name,
-                "current_stock": self._parse_number(tool.get("total", 0)),
-                "stock_new": self._parse_number(tool.get("new", 0)),
-                "stock_old": self._parse_number(tool.get("old", 0)),
-                "stock_detail": str(tool.get("detail_specification", "")).strip(),  # Detail Specification
-                "photo": str(tool.get("picture", "")).strip(),  # Picture column
-                "uom": str(tool.get("uom", "Pcs")).strip(),  # Unit of Measure
-                "remark": str(tool.get("remark", "")).strip(),  # Remark
-                "description": str(tool.get("detail_specification", "")).strip(),  # Detail Specification as description
-                # Keep original columns for compatibility (using original CSV names)
-                "Part Name": part_name,
-                "Detail Specification": str(tool.get("detail_specification", "")).strip(),
-                "Picture": str(tool.get("picture", "")).strip(),
-                "Total": self._parse_number(tool.get("total", 0)),
-                "NEW": self._parse_number(tool.get("new", 0)),
-                "OLD": self._parse_number(tool.get("old", 0)),
-                "UOM": str(tool.get("uom", "Pcs")).strip(),
-                "Remark": str(tool.get("remark", "")).strip(),
-            }
-            normalized_tools.append(normalized)
         
         print(f"[DEBUG ToolService] Returning {len(normalized_tools)} tools")
         return normalized_tools
