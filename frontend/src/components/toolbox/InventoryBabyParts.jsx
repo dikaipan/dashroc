@@ -69,15 +69,25 @@ const InventoryBabyParts = () => {
             fetchInProgressRef.current = false;
             return;
           }
+          console.log('[InventoryBabyParts] Received data:', data);
+          console.log('[InventoryBabyParts] Data type:', typeof data, 'Is array:', Array.isArray(data));
+          
+          let partsData = [];
           if (Array.isArray(data)) {
-            setBabyParts(data);
+            partsData = data;
           } else if (data.data && Array.isArray(data.data)) {
-            setBabyParts(data.data);
+            partsData = data.data;
           } else if (data.rows && Array.isArray(data.rows)) {
-            setBabyParts(data.rows);
+            partsData = data.rows;
           } else {
             console.warn('[InventoryBabyParts] Unexpected data format:', data);
-            setBabyParts([]);
+            partsData = [];
+          }
+          
+          console.log('[InventoryBabyParts] Parsed partsData:', partsData);
+          console.log('[InventoryBabyParts] Parts count:', partsData.length);
+          if (isMountedRef.current) {
+            setBabyParts(partsData);
           }
         } else {
           const errorData = await response.json().catch(() => ({}));
@@ -380,8 +390,29 @@ const InventoryBabyParts = () => {
 
       {/* Gallery View */}
       {viewMode === 'gallery' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredBabyParts.map((babyPart, index) => {
+        <>
+          {filteredBabyParts.length === 0 ? (
+            <div className={`${isDark ? 'bg-slate-800/50' : 'bg-white'} rounded-xl border ${isDark ? 'border-slate-700' : 'border-gray-200'} shadow-lg p-12 text-center`}>
+              <Package className={`mx-auto mb-4 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} size={48} />
+              <h3 className={`text-xl font-bold mb-2 ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
+                Tidak ada data baby parts
+              </h3>
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-600'} mb-6`}>
+                {searchTerm ? 'Tidak ada baby parts yang sesuai dengan pencarian Anda' : 'Belum ada baby parts yang ditambahkan'}
+              </p>
+              {!searchTerm && (
+                <button
+                  onClick={() => openModal()}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl mx-auto"
+                >
+                  <Plus size={20} />
+                  Tambah Baby Part Pertama
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredBabyParts.map((babyPart, index) => {
             const babyPartName = babyPart.baby_parts || babyPart['Baby Parts'] || 'Unknown';
             const qty = babyPart.qty || babyPart['Qty'] || 0;
             const qtyStatus = getQuantityStatus(qty);
@@ -447,32 +478,54 @@ const InventoryBabyParts = () => {
               </div>
             );
           })}
-        </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Table View */}
       {viewMode === 'table' && (
         <div className={`${isDark ? 'bg-slate-800/50' : 'bg-white'} rounded-xl border ${isDark ? 'border-slate-700' : 'border-gray-200'} shadow-lg overflow-hidden`}>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className={`${isDark ? 'bg-slate-700/50' : 'bg-gray-50'} border-b ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
-                <tr>
-                  <th className={`px-6 py-3 text-left text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
-                    Baby Parts
-                  </th>
-                  <th className={`px-6 py-3 text-center text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
-                    Quantity
-                  </th>
-                  <th className={`px-6 py-3 text-center text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
-                    Status
-                  </th>
-                  <th className={`px-6 py-3 text-center text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-gray-200'}`}>
-                {filteredBabyParts.map((babyPart, index) => {
+          {filteredBabyParts.length === 0 ? (
+            <div className="p-12 text-center">
+              <Package className={`mx-auto mb-4 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} size={48} />
+              <h3 className={`text-xl font-bold mb-2 ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
+                Tidak ada data baby parts
+              </h3>
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-600'} mb-6`}>
+                {searchTerm ? 'Tidak ada baby parts yang sesuai dengan pencarian Anda' : 'Belum ada baby parts yang ditambahkan'}
+              </p>
+              {!searchTerm && (
+                <button
+                  onClick={() => openModal()}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl mx-auto"
+                >
+                  <Plus size={20} />
+                  Tambah Baby Part Pertama
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className={`${isDark ? 'bg-slate-700/50' : 'bg-gray-50'} border-b ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+                  <tr>
+                    <th className={`px-6 py-3 text-left text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
+                      Baby Parts
+                    </th>
+                    <th className={`px-6 py-3 text-center text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
+                      Quantity
+                    </th>
+                    <th className={`px-6 py-3 text-center text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
+                      Status
+                    </th>
+                    <th className={`px-6 py-3 text-center text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'} uppercase tracking-wider`}>
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-gray-200'}`}>
+                  {filteredBabyParts.map((babyPart, index) => {
                   const babyPartName = babyPart.baby_parts || babyPart['Baby Parts'] || 'Unknown';
                   const qty = babyPart.qty || babyPart['Qty'] || 0;
                   const qtyStatus = getQuantityStatus(qty);
@@ -535,9 +588,10 @@ const InventoryBabyParts = () => {
                     </tr>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

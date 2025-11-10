@@ -10,7 +10,7 @@ export default function Toolbox() {
 
   const tabs = [
     { id: 'inventory', label: 'Inventory Tools', icon: Package },
-    { id: 'utilities', label: 'Utilities', icon: Settings }
+    { id: 'babypart', label: 'Baby Part Tools', icon: Settings }
   ];
 
   return (
@@ -42,7 +42,7 @@ export default function Toolbox() {
         {/* Tab Content */}
         <div>
           {activeTab === 'inventory' && <InventoryTools />}
-          {activeTab === 'utilities' && <InventoryBabyParts />}
+          {activeTab === 'babypart' && <InventoryBabyParts />}
         </div>
       </div>
     </PageLayout>

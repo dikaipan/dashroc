@@ -69,7 +69,16 @@ class BabyPartService(BaseService):
         Returns:
             List of baby parts as dictionaries
         """
-        df = self._get_dataframe()
+        try:
+            df = self._get_dataframe()
+            print(f"[DEBUG BabyPartService] DataFrame shape: {df.shape}")
+            print(f"[DEBUG BabyPartService] DataFrame columns: {df.columns.tolist()}")
+            print(f"[DEBUG BabyPartService] First few rows:\n{df.head()}")
+        except Exception as e:
+            print(f"[ERROR BabyPartService] Failed to get dataframe: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
         
         # Find the baby parts column
         baby_parts_col = "baby_parts"
@@ -77,9 +86,13 @@ class BabyPartService(BaseService):
             possible_names = [col for col in df.columns if 'baby' in col.lower() and 'part' in col.lower()]
             if possible_names:
                 baby_parts_col = possible_names[0]
+                print(f"[DEBUG BabyPartService] Found baby_parts column: {baby_parts_col}")
             else:
                 # Fallback to first column
                 baby_parts_col = df.columns[0] if len(df.columns) > 0 else "baby_parts"
+                print(f"[DEBUG BabyPartService] Using fallback baby_parts column: {baby_parts_col}")
+        else:
+            print(f"[DEBUG BabyPartService] Using standard baby_parts column: {baby_parts_col}")
         
         # Find the qty column
         qty_col = "qty"
@@ -87,31 +100,46 @@ class BabyPartService(BaseService):
             possible_names = [col for col in df.columns if 'qty' in col.lower() or 'quantity' in col.lower()]
             if possible_names:
                 qty_col = possible_names[0]
+                print(f"[DEBUG BabyPartService] Found qty column: {qty_col}")
             else:
                 # Fallback to second column if exists
                 qty_col = df.columns[1] if len(df.columns) > 1 else "qty"
+                print(f"[DEBUG BabyPartService] Using fallback qty column: {qty_col}")
+        else:
+            print(f"[DEBUG BabyPartService] Using standard qty column: {qty_col}")
         
         # Filter out empty rows
-        df = df[df[baby_parts_col].notna()]
-        df = df[df[baby_parts_col].astype(str).str.strip() != '']
+        if baby_parts_col in df.columns:
+            df = df[df[baby_parts_col].notna()]
+            df = df[df[baby_parts_col].astype(str).str.strip() != '']
+        else:
+            print(f"[ERROR BabyPartService] Column {baby_parts_col} not found in dataframe!")
+            return []
+        
+        print(f"[DEBUG BabyPartService] After filtering, DataFrame shape: {df.shape}")
         
         # Normalize data
         normalized = []
-        for _, row in df.iterrows():
-            baby_part_name = str(row.get(baby_parts_col, "")).strip()
-            if not baby_part_name:
+        for idx, row in df.iterrows():
+            try:
+                baby_part_name = str(row.get(baby_parts_col, "")).strip()
+                if not baby_part_name:
+                    continue
+                
+                qty = self._parse_number(row.get(qty_col, 0))
+                
+                normalized.append({
+                    "id": baby_part_name,
+                    "baby_parts": baby_part_name,
+                    "qty": qty,
+                    "Baby Parts": baby_part_name,  # Original column name for compatibility
+                    "Qty": qty,  # Original column name for compatibility
+                })
+            except Exception as e:
+                print(f"[WARNING BabyPartService] Error processing row {idx}: {e}")
                 continue
-            
-            qty = self._parse_number(row.get(qty_col, 0))
-            
-            normalized.append({
-                "id": baby_part_name,
-                "baby_parts": baby_part_name,
-                "qty": qty,
-                "Baby Parts": baby_part_name,  # Original column name for compatibility
-                "Qty": qty,  # Original column name for compatibility
-            })
         
+        print(f"[DEBUG BabyPartService] Returning {len(normalized)} normalized baby parts")
         return normalized
     
     def _get_original_column_mapping(self) -> Dict[str, str]:

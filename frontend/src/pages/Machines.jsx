@@ -785,18 +785,18 @@ export default function Machines() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Garansi dengan Progress Bar */}
         <div className={cn(getKPICard('green', true), 'min-h-[400px] max-h-[500px] flex flex-col overflow-hidden')}>
-          <div className="flex items-start justify-between mb-4 flex-shrink-0">
-            <div className="flex-1">
-              <p className={TEXT_STYLES.kpiTitle}>Coverage Garansi</p>
-              <h3 className={TEXT_STYLES.kpiValue}>{warrantyPercentage.toFixed(1)}%</h3>
+          <div className="flex items-start justify-between mb-4 flex-shrink-0 gap-3">
+            <div className="flex-1 min-w-0">
+              <p className={cn(TEXT_STYLES.kpiTitle, 'truncate')}>Coverage Garansi</p>
+              <h3 className={cn(TEXT_STYLES.kpiValue, 'truncate')}>{warrantyPercentage.toFixed(1)}%</h3>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={() => setShowWarrantyInsightModal(true)}
                 className="text-slate-400 hover:text-green-400 transition-colors p-2 rounded hover:bg-slate-700/50 bg-green-600/20 hover:bg-green-600/30"
                 title="Lihat Insight Detail"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </button>
@@ -815,16 +815,16 @@ export default function Machines() {
                 style={{ width: `${100 - warrantyPercentage}%` }}
               ></div>
             </div>
-            <div className="flex justify-between mt-2 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                <span className="text-green-400 font-semibold">{onWarranty.toLocaleString()} aktif</span>
-                <span className="text-slate-500">({warrantyPercentage.toFixed(1)}%)</span>
+            <div className="flex justify-between items-center mt-2.5 text-xs gap-2">
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <div className="w-3 h-3 rounded-full bg-green-400 flex-shrink-0"></div>
+                <span className="text-green-400 font-semibold truncate">{onWarranty.toLocaleString()} aktif</span>
+                <span className="text-slate-500 flex-shrink-0">({warrantyPercentage.toFixed(1)}%)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                <span className="text-red-400 font-semibold">{outOfWarranty.toLocaleString()} expired</span>
-                <span className="text-slate-500">({(100 - warrantyPercentage).toFixed(1)}%)</span>
+              <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
+                <div className="w-3 h-3 rounded-full bg-red-400 flex-shrink-0"></div>
+                <span className="text-red-400 font-semibold truncate">{outOfWarranty.toLocaleString()} expired</span>
+                <span className="text-slate-500 flex-shrink-0">({(100 - warrantyPercentage).toFixed(1)}%)</span>
               </div>
             </div>
           </div>
@@ -833,14 +833,14 @@ export default function Machines() {
           {warrantyRemaining && warrantyRemaining.avgDays > 0 && (
             <div className="mt-4 pt-4 border-t border-slate-700/50 flex-1 flex flex-col min-h-0 overflow-hidden">
               {/* Grid Layout untuk Status */}
-              <div className="grid grid-cols-2 gap-3 mb-3 flex-shrink-0">
+              <div className="grid grid-cols-2 gap-3 mb-4 flex-shrink-0">
                 {/* Rata-rata Sisa */}
-                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">⏱️</span>
-                    <span className="text-xs text-slate-400">Rata-rata Sisa</span>
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-base flex-shrink-0">⏱️</span>
+                    <span className="text-xs text-slate-400 truncate">Rata-rata Sisa</span>
                   </div>
-                  <div className="text-lg font-bold text-green-400">
+                  <div className="text-base font-bold text-green-400 truncate">
                     {warrantyRemaining.avgMonths > 0 
                       ? `${warrantyRemaining.avgMonths} bulan`
                       : `${warrantyRemaining.avgDays} hari`
@@ -849,11 +849,12 @@ export default function Machines() {
                 </div>
 
                 {/* Total Aktif */}
-                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs text-slate-400">Total Aktif</span>
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-base flex-shrink-0">✅</span>
+                    <span className="text-xs text-slate-400 truncate">Total Aktif</span>
                   </div>
-                  <div className="text-lg font-bold text-green-400">
+                  <div className="text-base font-bold text-green-400 truncate">
                     {onWarranty.toLocaleString()}
                   </div>
                 </div>
@@ -861,17 +862,18 @@ export default function Machines() {
 
               {/* Top 3 Expiring Soon Machines - Table Format */}
               {warrantyInsights && warrantyInsights.expiringSoonMachines && warrantyInsights.expiringSoonMachines.length > 0 && (
-                <div className="mb-2 flex-shrink-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-xs text-slate-400 font-semibold flex items-center gap-1">
-                      <span>⚠️</span> Mesin yang Expiring Soon
+                <div className="mb-3 flex-shrink-0 min-h-0">
+                  <div className="flex items-center justify-between mb-2.5 px-0.5">
+                    <div className="text-xs text-slate-400 font-semibold flex items-center gap-1.5 min-w-0">
+                      <span className="flex-shrink-0 text-sm">⚠️</span>
+                      <span className="truncate">Expiring Soon</span>
                     </div>
                     {warrantyInsights.expiringSoonMachines.length > 3 && (
                       <button
                         onClick={() => setShowExpiringSoonModal(true)}
-                        className="text-xs text-green-400 hover:text-green-300 transition-colors font-semibold"
+                        className="text-xs text-green-400 hover:text-green-300 transition-colors font-semibold flex-shrink-0 whitespace-nowrap px-1"
                       >
-                        Lihat Detail →
+                        Detail →
                       </button>
                     )}
                   </div>
@@ -879,10 +881,10 @@ export default function Machines() {
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b border-slate-700/50">
-                          <th className="text-left py-1 px-2 text-slate-400 font-semibold">#</th>
-                          <th className="text-left py-1 px-2 text-slate-400 font-semibold">WSID</th>
-                          <th className="text-left py-1 px-2 text-slate-400 font-semibold">Area</th>
-                          <th className="text-right py-1 px-2 text-slate-400 font-semibold">Sisa</th>
+                          <th className="text-center py-2 px-2 text-slate-400 font-semibold text-[10px] w-8">#</th>
+                          <th className="text-left py-2 px-2 text-slate-400 font-semibold text-[10px] min-w-[70px]">WSID</th>
+                          <th className="text-left py-2 px-2 text-slate-400 font-semibold text-[10px] min-w-[60px]">Area</th>
+                          <th className="text-right py-2 px-2 text-slate-400 font-semibold text-[10px] min-w-[50px]">Sisa</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -891,23 +893,23 @@ export default function Machines() {
                             key={idx} 
                             className="border-b border-slate-700/30 hover:bg-slate-800/50 transition-colors last:border-b-0"
                           >
-                            <td className="py-1 px-2 text-slate-300 font-mono">{idx + 1}</td>
-                            <td className="py-1 px-2">
-                              <div className="text-slate-200 font-mono truncate max-w-[120px]" title={machine.wsid || 'Unknown'}>
+                            <td className="py-2 px-2 text-slate-300 font-mono text-center text-[11px]">{idx + 1}</td>
+                            <td className="py-2 px-2 min-w-0">
+                              <div className="text-slate-200 font-mono text-[11px] truncate" title={machine.wsid || 'Unknown'}>
                                 {machine.wsid || 'Unknown'}
                               </div>
                             </td>
-                            <td className="py-1 px-2">
-                              <div className="text-slate-400 truncate max-w-[100px]" title={machine.area_group || 'Unknown'}>
+                            <td className="py-2 px-2 min-w-0">
+                              <div className="text-slate-400 text-[11px] truncate" title={machine.area_group || 'Unknown'}>
                                 {machine.area_group || 'Unknown'}
                               </div>
                             </td>
-                            <td className="py-1 px-2 text-right">
-                              <div className={`font-bold ${
+                            <td className="py-2 px-2 text-right">
+                              <div className={`text-[11px] font-bold whitespace-nowrap ${
                                 machine.warrantyInfo.days <= 30 ? 'text-red-400' : 
                                 machine.warrantyInfo.days <= 60 ? 'text-orange-400' : 'text-yellow-400'
                               }`}>
-                                {machine.warrantyInfo.days} hari
+                                {machine.warrantyInfo.days}h
                               </div>
                             </td>
                           </tr>
@@ -920,12 +922,14 @@ export default function Machines() {
 
               {/* Quick Stats */}
               <div className="mt-auto pt-3 border-t border-slate-700/50 flex-shrink-0">
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="text-slate-400">
-                    Total Mesin: <span className="text-slate-200 font-semibold">{filteredMachines.length.toLocaleString()}</span>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="text-slate-400 min-w-0">
+                    <div className="truncate">Total Mesin:</div>
+                    <div className="text-slate-200 font-semibold truncate">{filteredMachines.length.toLocaleString()}</div>
                   </div>
-                  <div className="text-slate-400">
-                    Coverage: <span className="text-green-400 font-semibold">{warrantyPercentage.toFixed(1)}%</span>
+                  <div className="text-slate-400 text-right min-w-0">
+                    <div className="truncate">Coverage:</div>
+                    <div className="text-green-400 font-semibold truncate">{warrantyPercentage.toFixed(1)}%</div>
                   </div>
                 </div>
               </div>

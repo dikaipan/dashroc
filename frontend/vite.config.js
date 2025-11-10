@@ -32,7 +32,9 @@ export default defineConfig({
       'react-router-dom',
       'react-hot-toast',
       'react-feather',
-      'recharts' // Include recharts for pre-bundling to avoid runtime issues
+      'recharts', // Include recharts for pre-bundling to avoid runtime issues
+      'react-leaflet', // Include react-leaflet for pre-bundling to avoid runtime issues
+      'leaflet' // Include leaflet core for pre-bundling
     ],
   },
   build: {

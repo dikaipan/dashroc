@@ -72,6 +72,14 @@ import {
   PieChart, Pie, Cell 
 } from 'recharts';
 
+// React Leaflet untuk interactive maps
+import "leaflet/dist/leaflet.css";
+import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
+import indonesiaGeoJSON_RAW_STRING from "../data/peta_indonesia_geojson/indonesia-prov.geojson?raw";
+
+// Parse GeoJSON data
+const geoJsonData = JSON.parse(indonesiaGeoJSON_RAW_STRING);
+
 // Region colors for GeoJSON
 const regionColors = {
   "Region 1": '#ef4444',
