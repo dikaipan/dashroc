@@ -7,7 +7,7 @@
     "dev": "vite",
     "clean": "node scripts/clean-dist.js",
     "clean:install": "node scripts/clean-install.js",
-    "prebuild": "node scripts/clean-dist.js",
+    "prebuild": "node scripts/verify-vite.js && node scripts/clean-dist.js",
     "build": "cross-env NODE_ENV=production vite build",
     "build:rolldown": "vite build",
     "lint": "eslint .",
@@ -29,6 +29,7 @@
     "react-hot-toast": "^2.4.1",
     "react-is": "^19.2.0",
     "react-leaflet": "^5.0.0",
+    "react-router": "^7.9.5",
     "react-router-dom": "^7.9.5",
     "recharts": "^3.3.0"
   },

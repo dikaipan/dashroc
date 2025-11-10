@@ -51,6 +51,7 @@ frontend/dist/
 frontend/build/
 frontend/.vite/
 frontend/.cache/
+frontend/package-lock.json
 
 # Testing
 .coverage
