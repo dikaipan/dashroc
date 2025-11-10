@@ -15,9 +15,12 @@ export default defineConfig(({ mode }) => {
   return {
     // Explicitly set mode to production for builds
     mode: isProduction ? 'production' : mode,
-    // Define process.env.NODE_ENV to ensure react-router uses the correct build
+    // Define multiple environment variables to ensure react-router uses production build
     define: {
-      'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development')
+      'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
+      'import.meta.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
+      'NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
+      '__DEV__': JSON.stringify(isProduction ? 'false' : 'true')
     },
     plugins: [react()],
     base: '/',
