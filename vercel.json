@@ -59,6 +59,10 @@
     {
       "source": "/api/monthly-machines",
       "destination": "/api/monthly-machines.json"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }
