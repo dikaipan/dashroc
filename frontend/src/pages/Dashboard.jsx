@@ -386,6 +386,9 @@ export default function Dashboard() {
    * @dependencies [engineers, machines, category]
    */
   const options = useMemo(() => {
+    // Ensure engineers and machines are arrays
+    const engineersArray = Array.isArray(engineers) ? engineers : [];
+    const machinesArray = Array.isArray(machines) ? machines : [];
     let options = [];
     
     if (category === "REGION") {
@@ -393,26 +396,42 @@ export default function Dashboard() {
       options = ["Region 1", "Region 2", "Region 3"];
     } else if (category === "VENDOR") {
       // Hanya ambil dari engineers, bukan dari customer machines
-      const engineerVendors = engineers.map((r) => r.vendor).filter(Boolean);
+      const engineerVendors = engineersArray
+        .filter((r) => r && typeof r === 'object')
+        .map((r) => r.vendor)
+        .filter((val) => val && typeof val === 'string');
       options = engineerVendors;
     } else if (category === "AREA GROUP") {
-      const engineerAreaGroups = engineers.map((r) => r.area_group).filter(Boolean);
-      const machineAreaGroups = machines.map((r) => r.area_group).filter(Boolean);
+      const engineerAreaGroups = engineersArray
+        .filter((r) => r && typeof r === 'object')
+        .map((r) => r.area_group)
+        .filter((val) => val && typeof val === 'string');
+      const machineAreaGroups = machinesArray
+        .filter((r) => r && typeof r === 'object')
+        .map((r) => r.area_group)
+        .filter((val) => val && typeof val === 'string');
       options = [...engineerAreaGroups, ...machineAreaGroups];
       
       // Normalisasi area group names
       const normalizedMap = new Map();
       options.forEach(opt => {
-        const normalized = normalizeText(opt);
-        if (!normalizedMap.has(normalized)) {
-          normalizedMap.set(normalized, toTitleCase(normalized));
+        if (opt && typeof opt === 'string') {
+          try {
+            const normalized = normalizeText(opt);
+            if (normalized && !normalizedMap.has(normalized)) {
+              normalizedMap.set(normalized, toTitleCase(normalized));
+            }
+          } catch (error) {
+            // Skip invalid options
+            console.warn('Error normalizing option:', opt, error);
+          }
         }
       });
       
-      options = Array.from(normalizedMap.values());
+      options = Array.from(normalizedMap.values()).filter(Boolean);
     }
     
-    const uniqueOptions = [...new Set(options)].filter(Boolean);
+    const uniqueOptions = [...new Set(options)].filter((opt) => opt && typeof opt === 'string');
     
     return uniqueOptions.sort((a, b) => {
       if (category === "REGION") {
@@ -423,7 +442,10 @@ export default function Dashboard() {
         if (aIndex !== -1) return -1;
         if (bIndex !== -1) return 1;
       }
-      return a.localeCompare(b);
+      if (typeof a === 'string' && typeof b === 'string') {
+        return a.localeCompare(b);
+      }
+      return 0;
     });
   }, [engineers, machines, category]);
   
@@ -442,6 +464,9 @@ export default function Dashboard() {
    * @dependencies [engineers, category, filterValue]
    */
   const filteredEngineers = useMemo(() => {
+    // Ensure engineers is an array
+    if (!Array.isArray(engineers)) return [];
+    
     // Use deferredFilterValue for heavy calculations to avoid blocking UI
     const activeFilter = deferredFilterValue || filterValue;
     if (!activeFilter) return engineers;
@@ -450,7 +475,10 @@ export default function Dashboard() {
     if (category === "AREA GROUP") {
       // Pattern matching: "Surabaya" akan match dengan "Surabaya 1", "Surabaya 2", dll
       return engineers.filter((r) => {
-        const value = r[key]?.toLowerCase().trim().replace(/\s+/g, ' ');
+        if (!r || typeof r !== 'object') return false;
+        const rawValue = r[key];
+        if (!rawValue || typeof rawValue !== 'string') return false;
+        const value = rawValue.toLowerCase().trim().replace(/\s+/g, ' ');
         const filter = activeFilter.toLowerCase().trim();
         // Hapus angka di akhir untuk matching
         const valueBase = value.replace(/\s+\d+$/, '');
@@ -458,7 +486,7 @@ export default function Dashboard() {
       });
     }
     
-    return engineers.filter((r) => r[key] === activeFilter);
+    return engineers.filter((r) => r && typeof r === 'object' && r[key] === activeFilter);
   }, [engineers, category, deferredFilterValue, filterValue]);
   
   /**
@@ -472,6 +500,11 @@ export default function Dashboard() {
    * @dependencies [machines, engineers, category, filterValue]
    */
   const filteredMachines = useMemo(() => {
+    // Ensure machines is an array
+    if (!Array.isArray(machines)) return [];
+    // Ensure engineers is an array for region filtering
+    const engineersArray = Array.isArray(engineers) ? engineers : [];
+    
     // Use deferredFilterValue for heavy calculations to avoid blocking UI
     const activeFilter = deferredFilterValue || filterValue;
     if (!activeFilter) return machines;
@@ -480,19 +513,25 @@ export default function Dashboard() {
       // Atau gunakan area_group sebagai proxy untuk region jika tidak ada mapping
       // Asumsi: machines memiliki field region atau kita filter berdasarkan engineer region
       return machines.filter((machine) => {
+        if (!machine || typeof machine !== 'object') return false;
         // Cari engineer yang sesuai dengan machine ini
-        const relatedEngineer = engineers.find(eng => 
-          eng.area_group === machine.area_group || 
-          eng.vendor === machine.customer
+        const relatedEngineer = engineersArray.find(eng => 
+          eng && typeof eng === 'object' && (
+            eng.area_group === machine.area_group || 
+            eng.vendor === machine.customer
+          )
         );
-        return relatedEngineer?.region === activeFilter || machine.region === activeFilter;
+        return (relatedEngineer?.region === activeFilter) || (machine.region === activeFilter);
       });
     } else if (category === "VENDOR") {
-      return machines.filter((r) => r.customer === activeFilter);
+      return machines.filter((r) => r && typeof r === 'object' && r.customer === activeFilter);
     } else if (category === "AREA GROUP") {
       // Pattern matching: "Surabaya" akan match dengan "Surabaya 1", "Surabaya 2", dll
       return machines.filter((r) => {
-        const value = r.area_group?.toLowerCase().trim().replace(/\s+/g, ' ');
+        if (!r || typeof r !== 'object') return false;
+        const rawValue = r.area_group;
+        if (!rawValue || typeof rawValue !== 'string') return false;
+        const value = rawValue.toLowerCase().trim().replace(/\s+/g, ' ');
         const filter = activeFilter.toLowerCase().trim();
         // Hapus angka di akhir untuk matching
         const valueBase = value.replace(/\s+\d+$/, '');

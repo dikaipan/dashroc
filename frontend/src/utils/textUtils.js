@@ -5,6 +5,10 @@
  */
 export const normalizeText = (text) => {
   if (!text) return '';
+  if (typeof text !== 'string') {
+    // Convert to string if not already
+    text = String(text);
+  }
   return text.toLowerCase().trim().replace(/\s+/g, ' ');
 };
 
@@ -13,6 +17,10 @@ export const normalizeText = (text) => {
  */
 export const toTitleCase = (text) => {
   if (!text) return '';
+  if (typeof text !== 'string') {
+    // Convert to string if not already
+    text = String(text);
+  }
   return text.split(' ').map(word => 
     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
   ).join(' ');
@@ -24,6 +32,10 @@ export const toTitleCase = (text) => {
  */
 export const normalizeAreaGroup = (areaGroup) => {
   if (!areaGroup) return 'Unknown';
+  if (typeof areaGroup !== 'string') {
+    // Convert to string if not already
+    areaGroup = String(areaGroup);
+  }
   
   // Normalize: remove trailing numbers, roman numerals, suffixes
   let normalized = areaGroup
@@ -34,6 +46,8 @@ export const normalizeAreaGroup = (areaGroup) => {
     .replace(/\s+area$/i, '')          // Remove "Area"
     .replace(/\s*-\s*$/, '')           // Remove trailing dash if any
     .trim();
+  
+  if (!normalized) return 'Unknown';
   
   // Capitalize first letter of each word for consistency
   return normalized.split(' ').map(word => 
