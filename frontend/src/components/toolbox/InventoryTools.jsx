@@ -82,15 +82,24 @@ const InventoryTools = () => {
         
         if (!contentType || !contentType.includes('application/json')) {
           const text = await response.text();
-          console.error('[InventoryTools] Expected JSON but got:', contentType);
-          console.error('[InventoryTools] Response text (first 200 chars):', text.substring(0, 200));
+          console.warn('[InventoryTools] Expected JSON but got:', contentType);
+          console.warn('[InventoryTools] Response text (first 200 chars):', text.substring(0, 200));
           
-          // Show user-friendly error message
-          if (text.includes('<!doctype html>') || text.includes('<html')) {
-            toast.error('Backend tidak tersedia. Pastikan Flask server berjalan atau backend sudah di-deploy.', {
-              duration: 5000,
-              icon: '⚠️'
-            });
+          // Check if backend is not available (response is HTML, likely from SPA fallback)
+          const isBackendUnavailable = text.includes('<!doctype html>') || text.includes('<html') || response.status === 404;
+          
+          if (isBackendUnavailable) {
+            // Only show error in development mode
+            // In production, silently handle missing backend (backend might not be deployed yet)
+            if (import.meta.env.DEV) {
+              toast.error('Backend tidak tersedia. Pastikan Flask server berjalan di http://localhost:5000', {
+                duration: 5000,
+                icon: '⚠️'
+              });
+            } else {
+              // In production, just log and show empty state
+              console.info('[InventoryTools] Backend not available in production. Tools feature requires backend API.');
+            }
           }
           
           if (isMountedRef.current) {
@@ -130,11 +139,23 @@ const InventoryTools = () => {
           const errorData = await response.json().catch(() => ({}));
           console.error('[InventoryTools] Error response:', response.status, errorData);
           
-          // Show user-friendly error message
-          toast.error(`Error loading tools: ${errorData.error || response.statusText}`, {
-            duration: 5000,
-            icon: '❌'
-          });
+          // Only show error for non-404 errors (404 means backend endpoint doesn't exist)
+          if (response.status !== 404) {
+            // Show user-friendly error message only in development
+            if (import.meta.env.DEV) {
+              toast.error(`Error loading tools: ${errorData.error || response.statusText}`, {
+                duration: 5000,
+                icon: '❌'
+              });
+            }
+          } else {
+            // 404 means backend not available
+            if (import.meta.env.DEV) {
+              console.warn('[InventoryTools] Backend endpoint not found (404). Make sure Flask server is running.');
+            } else {
+              console.info('[InventoryTools] Backend not available in production.');
+            }
+          }
           
           if (isMountedRef.current) setTools([]);
         }
@@ -146,13 +167,18 @@ const InventoryTools = () => {
         console.error('[InventoryTools] Error fetching tools:', error);
         console.error('[InventoryTools] Error details:', error.message, error.stack);
         
-        // Show user-friendly error message
-        toast.error(`Gagal memuat data tools: ${error.message}`, {
-          duration: 5000,
-          icon: '❌'
-        });
+        // Only show error in development mode
+        // In production, network errors might occur if backend is not deployed
+        if (import.meta.env.DEV) {
+          toast.error(`Gagal memuat data tools: ${error.message}`, {
+            duration: 5000,
+            icon: '❌'
+          });
+        } else {
+          console.info('[InventoryTools] Failed to fetch tools. Backend might not be available in production.');
+        }
         
-        setTools([]);
+        if (isMountedRef.current) setTools([]);
       } finally {
         if (isMountedRef.current) setLoading(false);
         fetchInProgressRef.current = false;
