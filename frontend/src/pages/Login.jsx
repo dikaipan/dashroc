@@ -66,7 +66,7 @@ export default function Login() {
         </form>
         
         <p className="text-center text-sm text-gray-600 mt-6">
-          DEMO : user name dan sandi apapun bisa masuk 
+          Gunakan akun admin: <strong>rocadmn</strong> / <strong>Roc#_12345</strong>
         </p>
       </div>
     </div>

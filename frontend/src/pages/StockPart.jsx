@@ -211,6 +211,7 @@ export default function StockPart() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [uploadingCSV, setUploadingCSV] = useState(false);
+  const [uploadingFSL, setUploadingFSL] = useState(false);
   const [sortBy, setSortBy] = useState('all');
   const [sortValue, setSortValue] = useState('');
 
@@ -674,6 +675,69 @@ const handleDelete = (part) => {
       });
     } finally {
       setUploadingCSV(false);
+    }
+  };
+
+  const handleUploadFSLCsv = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Harap upload file CSV FSL (alamat_fsl.csv)', {
+        icon: '⚠️',
+        duration: 3000
+      });
+      return;
+    }
+
+    setUploadingFSL(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('target', 'fsl-locations');
+
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Gagal mengupload CSV FSL';
+        try {
+          const contentType = response.headers.get('Content-Type') || '';
+          if (contentType.includes('application/json')) {
+            const errorData = await response.json();
+            if (errorData && (errorData.error || errorData.message)) {
+              errorMessage = errorData.error || errorData.message;
+            }
+          }
+        } catch (e) {
+          // Ignore JSON parse errors and fall back to generic message
+        }
+
+        if (response.status) {
+          errorMessage = `${errorMessage} (status ${response.status})`;
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      toast.success('CSV FSL berhasil diupload!', {
+        icon: '✅',
+        duration: 4000
+      });
+      // Trigger FSL data refresh (map & stock KPIs)
+      window.dispatchEvent(new Event('fslDataChanged'));
+      event.target.value = '';
+    } catch (error) {
+      console.error('Error uploading FSL CSV:', error);
+      toast.error(`Gagal mengupload CSV FSL: ${error.message}`, {
+        icon: '❌',
+        duration: 4000
+      });
+    } finally {
+      setUploadingFSL(false);
     }
   };
 

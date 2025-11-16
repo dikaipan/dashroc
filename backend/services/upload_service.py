@@ -19,6 +19,12 @@ class UploadService:
             dest = os.path.join(Config.DATA_DIR, "stok_part.csv")
         elif target == "so":
             dest = os.path.join(Config.DATA_DIR, "so_apr_spt.csv")
+        elif target == "monthly-machines":
+            dest = os.path.join(Config.DATA_DIR, "data_mesin_perbulan.csv")
+        elif target == "leveling":
+            dest = os.path.join(Config.DATA_DIR, "leveling.csv")
+        elif target == "fsl-locations":
+            dest = os.path.join(Config.DATA_DIR, "alamat_fsl.csv")
         else:
             raise ValueError(f"Invalid target: {target}")
         

@@ -39,6 +39,8 @@ export default function Engineers() {
   const [selectedEngineers, setSelectedEngineers] = useState([]); // For bulk delete
   const [uploadingCSV, setUploadingCSV] = useState(false); // CSV upload state
   const [uploadingSO, setUploadingSO] = useState(false); // SO CSV upload state
+  const [uploadingMonthly, setUploadingMonthly] = useState(false); // Monthly machines CSV upload state
+  const [uploadingLeveling, setUploadingLeveling] = useState(false); // Leveling CSV upload state
   const [expandedRows, setExpandedRows] = useState(new Set()); // For expandable rows
   const [visibleColumns, setVisibleColumns] = useState(new Set(['id', 'name', 'region', 'area_group', 'vendor', 'years_experience'])); // Default visible columns
   const [activeInsight, setActiveInsight] = useState(null); // 'total-engineers', 'experience', 'training' - State for insight modal
@@ -476,6 +478,114 @@ export default function Engineers() {
     }
   };
 
+  const handleUploadMonthlyMachinesCSV = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      alert.warning('Please upload a CSV file for monthly machines data');
+      return;
+    }
+
+    setUploadingMonthly(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('target', 'monthly-machines');
+
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to upload monthly machines CSV';
+        try {
+          const contentType = response.headers.get('Content-Type') || '';
+          if (contentType.includes('application/json')) {
+            const errorData = await response.json();
+            if (errorData && (errorData.error || errorData.message)) {
+              errorMessage = errorData.error || errorData.message;
+            }
+          }
+        } catch (e) {
+          // Ignore JSON parse errors and fall back to generic message
+        }
+
+        if (response.status) {
+          errorMessage = `${errorMessage} (status ${response.status})`;
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      alert.success('Monthly machines CSV uploaded successfully!', 'Upload Aktivasi Mesin Berhasil');
+      // Trigger monthly machine activation data refresh
+      window.dispatchEvent(new Event('monthlyMachinesChanged'));
+      event.target.value = '';
+    } catch (error) {
+      console.error('Error uploading monthly machines CSV:', error);
+      alert.error(`Failed to upload monthly machines CSV: ${error.message}`);
+    } finally {
+      setUploadingMonthly(false);
+    }
+  };
+
+  const handleUploadLevelingCSV = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      alert.warning('Please upload a CSV file for leveling data');
+      return;
+    }
+
+    setUploadingLeveling(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('target', 'leveling');
+
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to upload leveling CSV';
+        try {
+          const contentType = response.headers.get('Content-Type') || '';
+          if (contentType.includes('application/json')) {
+            const errorData = await response.json();
+            if (errorData && (errorData.error || errorData.message)) {
+              errorMessage = errorData.error || errorData.message;
+            }
+          }
+        } catch (e) {
+          // Ignore JSON parse errors and fall back to generic message
+        }
+
+        if (response.status) {
+          errorMessage = `${errorMessage} (status ${response.status})`;
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      alert.success('Leveling CSV uploaded successfully!', 'Upload Leveling Berhasil');
+      // Trigger leveling data refresh (Top Engineer Performance)
+      window.dispatchEvent(new Event('levelingDataChanged'));
+      event.target.value = '';
+    } catch (error) {
+      console.error('Error uploading leveling CSV:', error);
+      alert.error(`Failed to upload leveling CSV: ${error.message}`);
+    } finally {
+      setUploadingLeveling(false);
+    }
+  };
+
   // Reset selection and page when filters change
   useEffect(() => {
     setSelectedEngineers([]);
@@ -586,6 +696,28 @@ export default function Engineers() {
               accept=".csv"
               onChange={handleUploadSOCSV}
               disabled={uploadingSO}
+              className="hidden"
+            />
+          </label>
+          <label className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer">
+            <Upload size={16} />
+            <span>{uploadingMonthly ? 'Uploading Aktivasi...' : 'Import Aktivasi Mesin Per Bulan'}</span>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleUploadMonthlyMachinesCSV}
+              disabled={uploadingMonthly}
+              className="hidden"
+            />
+          </label>
+          <label className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer">
+            <Upload size={16} />
+            <span>{uploadingLeveling ? 'Uploading Leveling...' : 'Import Leveling CSV'}</span>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleUploadLevelingCSV}
+              disabled={uploadingLeveling}
               className="hidden"
             />
           </label>

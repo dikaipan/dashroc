@@ -414,6 +414,16 @@ export default function Dashboard() {
     };
     
     fetchMonthlyData();
+
+    const handleMonthlyMachinesChanged = () => {
+      fetchMonthlyData();
+    };
+
+    window.addEventListener('monthlyMachinesChanged', handleMonthlyMachinesChanged, { passive: true });
+
+    return () => {
+      window.removeEventListener('monthlyMachinesChanged', handleMonthlyMachinesChanged);
+    };
   }, []);
   
   // ============================================================================

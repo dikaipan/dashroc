@@ -142,7 +142,9 @@ export function useStockPartData() {
  * Uses generic useDataFetch hook
  */
 export function useFSLLocationData() {
-  const { data, loading, error } = useDataFetch('/fsl-locations');
+  const { data, loading, error } = useDataFetch('/fsl-locations', {
+    eventName: 'fslDataChanged',
+  });
 
   return { 
     rows: data, 
@@ -156,7 +158,9 @@ export function useFSLLocationData() {
  * Uses generic useDataFetch hook
  */
 export function useLevelingData() {
-  const { data, loading, error } = useDataFetch('/leveling');
+  const { data, loading, error } = useDataFetch('/leveling', {
+    eventName: 'levelingDataChanged',
+  });
 
   return { 
     rows: data, 
