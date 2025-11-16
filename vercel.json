@@ -3,8 +3,7 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "cd frontend && rm -rf node_modules package-lock.json .npm .cache && npm cache clean --force && npm install",
   "env": {
-    "NODE_ENV": "production",
-    "VITE_API_BASE_URL": "https://rocdashboard-production.up.railway.app/api"
+    "NODE_ENV": "production"
   },
   "cleanUrls": false,
   "trailingSlash": false,
