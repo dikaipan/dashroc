@@ -23,13 +23,9 @@ const getApiBaseUrl = () => {
     return envApiUrl.replace(/\/$/, '');
   }
   
-  // Production fallback - hardcoded Railway backend URL
-  if (import.meta.env.PROD) {
-    return 'https://rocdashboard-production.up.railway.app/api';
-  }
-  
-  // Default: use relative path for development
-  return '/api';
+  // HARDCODED: Always use Railway backend URL for now
+  // TODO: Change back to conditional after debugging
+  return 'https://rocdashboard-production.up.railway.app/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
