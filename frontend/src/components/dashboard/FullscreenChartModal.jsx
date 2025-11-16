@@ -307,7 +307,7 @@ export default function FullscreenChartModal({
                   </div>
                   
                   {/* Warranty Stats Grid - Enhanced */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* On Warranty */}
                     <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 hover:bg-green-500/20 transition-colors">
                       <div className="flex items-center justify-between mb-2">
@@ -364,7 +364,7 @@ export default function FullscreenChartModal({
                   </div>
                   
                   {/* Quick Stats Summary */}
-                  <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-700">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-slate-700">
                     <div className="text-center">
                       <p className="text-2xl font-bold text-slate-200">{currentMachines.toLocaleString()}</p>
                       <p className="text-xs text-slate-400 mt-1">Total Mesin</p>
@@ -1064,8 +1064,8 @@ export default function FullscreenChartModal({
   const insights = getInsights();
   
   return (
-    <div className={`fixed inset-0 ${isDark ? 'bg-black/90' : 'bg-black/60'} backdrop-blur-md flex items-center justify-center z-[9999] p-4`} style={{ zIndex: 9999 }}>
-      <div className={`${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'} rounded-2xl w-full max-w-7xl h-[90vh] p-8 relative shadow-2xl border flex flex-col`}>
+    <div className={`fixed inset-0 ${isDark ? 'bg-black/90' : 'bg-black/60'} backdrop-blur-md flex items-stretch sm:items-center justify-center z-[9999] p-2 sm:p-4`} style={{ zIndex: 9999 }}>
+      <div className={`${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'} w-full max-w-full sm:max-w-7xl h-screen sm:h-[90vh] p-4 sm:p-8 relative shadow-2xl border-0 sm:border flex flex-col rounded-none sm:rounded-2xl`}>
         <button
           onClick={onClose}
           className={`absolute top-4 right-4 ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'} transition-colors text-2xl font-bold rounded-lg w-10 h-10 flex items-center justify-center z-10`}

@@ -167,8 +167,8 @@ export default function EngineerInsightModal({
   const recommendations = getRecommendations();
 
   return (
-    <div className={`fixed inset-0 ${isDark ? 'bg-black/90' : 'bg-black/60'} backdrop-blur-md flex items-center justify-center z-[9999] p-4`} style={{ zIndex: 9999 }}>
-      <div className={`${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'} rounded-2xl w-full max-w-7xl h-[90vh] p-8 relative shadow-2xl border flex flex-col`}>
+    <div className={`fixed inset-0 ${isDark ? 'bg-black/90' : 'bg-black/60'} backdrop-blur-md flex items-stretch sm:items-center justify-center z-[9999] p-2 sm:p-4`} style={{ zIndex: 9999 }}>
+      <div className={`${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'} w-full max-w-full sm:max-w-7xl h-screen sm:h-[90vh] p-4 sm:p-8 relative shadow-2xl border-0 sm:border flex flex-col rounded-none sm:rounded-2xl`}>
         <button
           onClick={onClose}
           className={`absolute top-4 right-4 ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'} transition-colors text-2xl font-bold rounded-lg w-10 h-10 flex items-center justify-center z-10`}
