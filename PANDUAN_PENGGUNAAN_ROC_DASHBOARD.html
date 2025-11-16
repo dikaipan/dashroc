@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panduan Penggunaan ROC Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            --secondary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --accent-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --success-gradient: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+            --dark-gradient: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+        
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: #1e293b;
+            background: #f8fafc;
+            padding: 0;
+            position: relative;
+            font-size: 14px;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(250, 112, 154, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .page {
+            background: #ffffff;
+            min-height: 297mm;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: relative;
+            page-break-after: always;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary-gradient);
+        }
+        
+        h1 {
+            color: #1e293b;
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            position: relative;
+            page-break-after: avoid;
+            line-height: 1.3;
+        }
+        
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: var(--primary-gradient);
+            border-radius: 2px;
+        }
+        
+        h2 {
+            color: #334155;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 16px;
+            padding-left: 12px;
+            position: relative;
+            page-break-after: avoid;
+            line-height: 1.4;
+        }
+        
+        h2::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 70%;
+            background: var(--primary-gradient);
+            border-radius: 2px;
+        }
+        
+        h3 {
+            color: #475569;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            page-break-after: avoid;
+            line-height: 1.4;
+        }
+        
+        .cover-page {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 297mm;
+            padding: 40px 32px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+        
+        .cover-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        
+        .cover-page h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
+            line-height: 1.2;
+        }
+        
+        .cover-page .subtitle {
+            font-size: 1.125rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 32px;
+            font-weight: 400;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .cover-page .logo {
+            font-size: 4rem;
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .cover-page .version {
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 32px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .cover-page .gradient-line {
+            width: 120px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.5);
+            margin: 24px auto;
+            border-radius: 2px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .screenshot-placeholder {
+            width: 100%;
+            min-height: 250px;
+            background: #f1f5f9;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 16px 0;
+            color: #64748b;
+            font-weight: 500;
+            font-size: 0.875rem;
+            position: relative;
+            overflow: hidden;
+            page-break-inside: avoid;
+        }
+        
+        .screenshot-placeholder.has-image {
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            padding: 8px;
+        }
+        
+        .screenshot-placeholder img {
+            width: 100%;
+            height: auto;
+            max-height: 500px;
+            object-fit: contain;
+            border-radius: 6px;
+            display: block;
+        }
+        
+        .screenshot-placeholder::before {
+            content: "📸";
+            font-size: 2em;
+            margin-right: 12px;
+        }
+        
+        .screenshot-placeholder.has-image::before {
+            display: none;
+        }
+        
+        .screenshot-placeholder::after {
+            content: attr(data-label);
+        }
+        
+        .screenshot-placeholder.has-image::after {
+            content: attr(data-label);
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .screenshot-loading {
+            display: none;
+        }
+        
+        .feature-box {
+            background: #ffffff;
+            border-left: 3px solid;
+            border-image: var(--primary-gradient) 1;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            page-break-inside: avoid;
+            transition: all 0.2s ease;
+        }
+        
+        .feature-box:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .step-box {
+            background: #f8fafc;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 8px;
+            border-left: 3px solid #10b981;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            page-break-inside: avoid;
+            transition: all 0.2s ease;
+        }
+        
+        .step-box:hover {
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        }
+        
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #10b981;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            page-break-inside: avoid;
+            background: #ffffff;
+        }
+        
+        th {
+            background: #f8fafc;
+            color: #1e293b;
+            font-weight: 600;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.875rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.875rem;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        tr:hover {
+            background: #f1f5f9;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .icon-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .icon-list li {
+            padding: 8px 0;
+            padding-left: 32px;
+            position: relative;
+            font-size: 0.875rem;
+        }
+        
+        .icon-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: white;
+            font-weight: 600;
+            font-size: 0.75rem;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #10b981;
+            border-radius: 50%;
+        }
+        
+        .warning-box {
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        .info-box {
+            background: #dbeafe;
+            border-left: 3px solid #3b82f6;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        .toc {
+            background: #ffffff;
+            padding: 24px;
+            border-radius: 8px;
+            margin: 16px 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            page-break-after: always;
+            position: relative;
+        }
+        
+        .toc::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary-gradient);
+        }
+        
+        .toc h2 {
+            color: #1e293b;
+            border: none;
+            padding: 0;
+            margin-bottom: 16px;
+            font-size: 1.5rem;
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .toc li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .toc li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #2563eb;
+            font-weight: bold;
+        }
+        
+        .toc a {
+            color: #475569;
+            text-decoration: none;
+            font-weight: 400;
+            transition: color 0.2s ease;
+            display: inline-block;
+            padding: 4px 0;
+        }
+        
+        .toc a:hover {
+            color: #667eea;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin: 5px;
+        }
+        
+        .badge-primary {
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            color: white;
+        }
+        
+        .badge-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        
+        .badge-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+        
+        .feature-card {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-top: 2px solid;
+            border-image: var(--primary-gradient) 1;
+            transition: all 0.2s ease;
+        }
+        
+        .feature-card:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+        
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+            display: inline-block;
+        }
+        
+        .footer {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+        
+        .footer p {
+            margin: 8px 0;
+        }
+        
+        p {
+            margin-bottom: 12px;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            color: #475569;
+        }
+        
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #475569;
+            font-size: 0.8125rem;
+            font-weight: 500;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                animation: none;
+            }
+            
+            body::before {
+                display: none;
+            }
+            
+            .page {
+                box-shadow: none;
+                margin-bottom: 0;
+                border-radius: 0;
+            }
+            
+            .screenshot-placeholder {
+                border: 2px solid #6366f1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Halaman Cover -->
+    <div class="page cover-page">
+        <div class="logo">🚀</div>
+        <h1>ROC Dashboard</h1>
+        <div class="gradient-line"></div>
+        <div class="subtitle">Panduan Penggunaan & Dokumentasi Fitur</div>
+        <div style="margin-top: 40px; font-size: 1.2em; color: #cbd5e1;">
+            <p>Engineering & Machine Management System</p>
+        </div>
+        <div class="version">
+            <p style="font-size: 0.9em; margin-top: 30px;">
+                Versi 1.0<br>
+                <span style="font-size: 0.8em; color: #64748b; margin-top: 10px; display: block;">
+                    Dokumentasi lengkap fitur dan cara penggunaan sistem
+                </span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Daftar Isi -->
+    <div class="page">
+        <div class="toc">
+            <h2>📑 Daftar Isi</h2>
+            <ul>
+                <li><a href="#pengenalan">1. Pengenalan Sistem</a></li>
+                <li><a href="#fitur-utama">2. Fitur Utama</a>
+                    <ul style="margin-left: 20px; margin-top: 5px;">
+                        <li><a href="#dashboard">2.1 📊 Dashboard</a></li>
+                        <li><a href="#engineers">2.2 👥 Engineers Management</a></li>
+                        <li><a href="#machines">2.3 ⚙️ Machines Management</a></li>
+                        <li><a href="#stockpart">2.4 📦 Stock Parts Management</a></li>
+                        <li><a href="#structure">2.5 🏗️ Structure View</a></li>
+                        <li><a href="#decision">2.6 🎯 Decision Support</a></li>
+                        <li><a href="#toolbox">2.7 🧰 Toolbox</a></li>
+                    </ul>
+                </li>
+                <li><a href="#cara-penggunaan">3. Cara Penggunaan</a>
+                    <ul style="margin-left: 20px; margin-top: 5px;">
+                        <li><a href="#akses-sistem">3.1 Akses Sistem</a></li>
+                        <li><a href="#navigasi">3.2 Navigasi Menu</a></li>
+                        <li><a href="#operasi-crud">3.3 Operasi CRUD</a></li>
+                        <li><a href="#filter-dan-pencarian">3.4 Filter dan Pencarian</a></li>
+                        <li><a href="#export-data">3.5 Export Data</a></li>
+                    </ul>
+                </li>
+                <li><a href="#screenshot">4. 📸 Screenshot Tampilan</a></li>
+                <li><a href="#tips">5. 💡 Tips & Trik</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Bagian 1: Pengenalan -->
+    <div class="page">
+        <section id="pengenalan">
+            <h1>1. Pengenalan Sistem</h1>
+            
+            <div class="feature-box">
+                <h3>🎯 Tentang ROC Dashboard</h3>
+                <p style="font-size: 1.1em; line-height: 1.8;">
+                    <strong>ROC Dashboard</strong> adalah sistem manajemen terintegrasi untuk mengelola data engineer/teknisi 
+                    dan mesin customer. Sistem ini dirancang untuk memberikan visibilitas penuh terhadap 
+                    operasional engineering dan maintenance, dengan fitur analisis mendalam dan decision support 
+                    untuk optimasi operasional.
+                </p>
+            </div>
+
+            <h3>🛠️ Teknologi yang Digunakan</h3>
+            <table>
+                <tr>
+                    <th>Kategori</th>
+                    <th>Teknologi</th>
+                </tr>
+                <tr>
+                    <td><strong>Frontend</strong></td>
+                    <td>React.js, Recharts, Tailwind CSS, React Feather Icons, Leaflet Maps</td>
+                </tr>
+                <tr>
+                    <td><strong>Backend</strong></td>
+                    <td>Python (Flask), REST API, CSV Data Management</td>
+                </tr>
+                <tr>
+                    <td><strong>Visualisasi</strong></td>
+                    <td>Recharts (Charts), Leaflet (Maps), Interactive Dashboards</td>
+                </tr>
+            </table>
+
+            <div class="info-box">
+                <strong>💡 Informasi Penting:</strong> Sistem ini menggunakan CSV sebagai penyimpanan data, 
+                sehingga semua perubahan data akan langsung tersimpan ke file CSV yang sesuai.
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Real-time Updates</h3>
+                    <p>Data diperbarui secara real-time dengan perubahan langsung tersimpan</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Analytics</h3>
+                    <p>Visualisasi data yang interaktif dengan charts dan grafik</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🗺️</div>
+                    <h3>Maps</h3>
+                    <p>Peta interaktif untuk visualisasi geografis</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Secure</h3>
+                    <p>Sistem dengan autentikasi dan proteksi data</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Bagian 2: Fitur Utama - Dashboard -->
+    <div class="page">
+        <section id="fitur-utama">
+            <h1>2. Fitur Utama</h1>
+
+            <section id="dashboard">
+                <h2>📊 2.1 Dashboard</h2>
+                
+                <div class="screenshot-placeholder" data-label="Dashboard Overview"></div>
+                
+                <div class="feature-box">
+                    <h3>📈 Overview & KPI Cards</h3>
+                    <p>
+                        Dashboard menampilkan ringkasan data penting dalam bentuk KPI (Key Performance Indicators) cards:
+                    </p>
+                    <ul class="icon-list">
+                        <li><strong>Total Engineers:</strong> Jumlah total engineer yang terdaftar</li>
+                        <li><strong>Total Machines:</strong> Jumlah total mesin customer</li>
+                        <li><strong>Stock Parts:</strong> Total spare parts dalam inventory</li>
+                        <li><strong>FSL Locations:</strong> Jumlah Field Service Location (gudang regional)</li>
+                    </ul>
+                </div>
+
+                <div class="feature-box">
+                    <h3>🎨 Visualisasi Interaktif</h3>
+                    <ul class="icon-list">
+                        <li><strong>Peta Interaktif:</strong> Distribusi engineer dan mesin berdasarkan lokasi geografis</li>
+                        <li><strong>Charts & Graphs:</strong> Visualisasi data dalam bentuk bar chart, pie chart, dan line chart</li>
+                        <li><strong>Training Progress:</strong> Tracking progress training engineer</li>
+                        <li><strong>Machine Analytics:</strong> Analisis umur mesin, warranty status, dan tren instalasi</li>
+                    </ul>
+                </div>
+
+                <div class="step-box">
+                    <h3>🚀 Cara Menggunakan Dashboard:</h3>
+                    <p><span class="step-number">1</span> Akses halaman Dashboard melalui menu sidebar</p>
+                    <p><span class="step-number">2</span> Gunakan filter di bagian atas untuk memfilter data berdasarkan kategori</p>
+                    <p><span class="step-number">3</span> Klik pada KPI cards untuk melihat detail lebih lanjut</p>
+                    <p><span class="step-number">4</span> Klik pada chart untuk membuka tampilan fullscreen</p>
+                    <p><span class="step-number">5</span> Gunakan peta interaktif untuk melihat distribusi geografis</p>
+                </div>
+            </section>
+        </section>
+    </div>
+
+    <!-- Bagian 2: Engineers -->
+    <div class="page">
+        <section id="engineers">
+            <h2>👥 2.2 Engineers Management</h2>
+            
+            <div class="screenshot-placeholder" data-label="Halaman Engineers Management"></div>
+            
+            <div class="feature-box">
+                <h3>✨ Fitur CRUD Lengkap</h3>
+                <ul class="icon-list">
+                    <li><strong>Create:</strong> Tambah engineer baru dengan form dinamis</li>
+                    <li><strong>Read:</strong> Lihat daftar engineer dengan tabel yang dapat di-sort dan di-filter</li>
+                    <li><strong>Update:</strong> Edit data engineer yang sudah ada</li>
+                    <li><strong>Delete:</strong> Hapus engineer (dengan konfirmasi)</li>
+                    <li><strong>Bulk Delete:</strong> Hapus multiple engineer sekaligus</li>
+                </ul>
+            </div>
+
+            <div class="step-box">
+                <h3>📝 Cara Menggunakan Engineers Management:</h3>
+                <p><span class="step-number">1</span> Klik menu "Engineers" di sidebar</p>
+                <p><span class="step-number">2</span> Untuk menambah engineer baru: Klik tombol "Add Engineer"</p>
+                <p><span class="step-number">3</span> Isi form yang muncul, lalu klik "Save"</p>
+                <p><span class="step-number">4</span> Untuk edit: Klik icon edit (✏️) pada baris engineer yang ingin diedit</p>
+                <p><span class="step-number">5</span> Untuk hapus: Klik icon delete (🗑️) dan konfirmasi penghapusan</p>
+                <p><span class="step-number">6</span> Gunakan search box untuk mencari engineer tertentu</p>
+                <p><span class="step-number">7</span> Gunakan dropdown filter untuk memfilter berdasarkan kategori</p>
+                <p><span class="step-number">8</span> Klik icon download untuk export data ke CSV</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Bagian 2: Machines -->
+    <div class="page">
+        <section id="machines">
+            <h2>⚙️ 2.3 Machines Management</h2>
+            
+            <div class="screenshot-placeholder" data-label="Halaman Machines Management"></div>
+            
+            <div class="feature-box">
+                <h3>🔧 Manajemen Mesin Customer</h3>
+                <p>
+                    Halaman ini mengelola semua data mesin customer dengan informasi lengkap tentang 
+                    status warranty, maintenance, dan informasi teknis lainnya.
+                </p>
+            </div>
+
+            <div class="feature-box">
+                <h3>🎯 Fitur Utama</h3>
+                <ul class="icon-list">
+                    <li><strong>CRUD Operations:</strong> Create, Read, Update, Delete mesin</li>
+                    <li><strong>Warranty Tracking:</strong> Monitor status warranty mesin</li>
+                    <li><strong>Customer Filter:</strong> Filter mesin berdasarkan customer</li>
+                    <li><strong>Region Filter:</strong> Filter berdasarkan region</li>
+                    <li><strong>Warranty Filter:</strong> Filter berdasarkan status warranty</li>
+                    <li><strong>Machine Analytics:</strong> Analisis distribusi mesin per customer, region, dan type</li>
+                </ul>
+            </div>
+
+            <div class="step-box">
+                <h3>🚀 Cara Menggunakan Machines Management:</h3>
+                <p><span class="step-number">1</span> Klik menu "Machines" di sidebar</p>
+                <p><span class="step-number">2</span> Gunakan filter di bagian atas untuk memfilter mesin</p>
+                <p><span class="step-number">3</span> Klik "Add Machine" untuk menambah mesin baru</p>
+                <p><span class="step-number">4</span> Isi form dengan informasi mesin yang lengkap</p>
+                <p><span class="step-number">5</span> Klik icon edit untuk mengubah data mesin</p>
+                <p><span class="step-number">6</span> Klik pada KPI cards untuk melihat analisis detail</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Bagian 2: Stock Parts -->
+    <div class="page">
+        <section id="stockpart">
+            <h2>📦 2.4 Stock Parts Management</h2>
+            
+            <div class="screenshot-placeholder" data-label="Halaman Stock Parts Management"></div>
+            
+            <div class="feature-box">
+                <h3>📊 Manajemen Inventory Spare Parts</h3>
+                <p>
+                    Halaman ini mengelola inventory spare parts dan Field Service Location (FSL) 
+                    untuk memastikan ketersediaan parts di setiap gudang regional.
+                </p>
+            </div>
+
+            <div class="step-box">
+                <h3>📝 Cara Menggunakan Stock Parts Management:</h3>
+                <p><span class="step-number">1</span> Klik menu "Stock Part" di sidebar</p>
+                <p><span class="step-number">2</span> Lihat KPI cards untuk overview stock status</p>
+                <p><span class="step-number">3</span> Klik "Add Stock Part" untuk menambah parts baru</p>
+                <p><span class="step-number">4</span> Isi informasi part number, quantity, dan FSL location</p>
+                <p><span class="step-number">5</span> Monitor stock alerts untuk parts yang perlu perhatian</p>
+                <p><span class="step-number">6</span> Gunakan peta untuk melihat distribusi FSL locations</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Bagian 2: Structure, Decision, Toolbox -->
+    <div class="page">
+        <section id="structure">
+            <h2>🏗️ 2.5 Structure View</h2>
+            <div class="screenshot-placeholder" data-label="Halaman Structure View"></div>
+            <div class="feature-box">
+                <h3>📐 Visualisasi Struktur Organisasi</h3>
+                <p>Menampilkan struktur organisasi engineering dengan visualisasi interaktif.</p>
+            </div>
+        </section>
+
+        <section id="decision">
+            <h2>🎯 2.6 Decision Support</h2>
+            <div class="screenshot-placeholder" data-label="Halaman Decision Support"></div>
+            <div class="feature-box">
+                <h3>📊 Analisis & Decision Intelligence</h3>
+                <p>Menyediakan analisis mendalam dan decision support untuk pengambilan keputusan.</p>
+            </div>
+        </section>
+
+        <section id="toolbox">
+            <h2>🧰 2.7 Toolbox</h2>
+            <div class="screenshot-placeholder" data-label="Halaman Toolbox"></div>
+            <div class="feature-box">
+                <h3>🛠️ Tools & Utilities</h3>
+                <p>Berisi berbagai tools dan utilities untuk membantu operasional.</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Bagian 3: Cara Penggunaan -->
+    <div class="page">
+        <section id="cara-penggunaan">
+            <h1>3. Cara Penggunaan</h1>
+
+            <section id="akses-sistem">
+                <h2>🌐 3.1 Akses Sistem</h2>
+                <div class="step-box">
+                    <h3>Langkah-langkah Akses:</h3>
+                    <p><span class="step-number">1</span> Pastikan backend server sudah berjalan di <code>http://localhost:5000</code></p>
+                    <p><span class="step-number">2</span> Pastikan frontend server sudah berjalan di <code>http://localhost:5173</code></p>
+                    <p><span class="step-number">3</span> Buka browser dan akses <code>http://localhost:5173</code></p>
+                    <p><span class="step-number">4</span> Jika diperlukan, login dengan kredensial yang valid</p>
+                    <p><span class="step-number">5</span> Setelah login, Anda akan diarahkan ke halaman Dashboard</p>
+                </div>
+            </section>
+
+            <section id="navigasi">
+                <h2>🧭 3.2 Navigasi Menu</h2>
+                <div class="screenshot-placeholder" data-label="Sidebar Navigation"></div>
+                <div class="feature-box">
+                    <h3>📋 Menu Sidebar</h3>
+                    <p>Sidebar berada di sisi kiri layar dan berisi menu-menu berikut:</p>
+                    <ul class="icon-list">
+                        <li><strong>Dashboard:</strong> Halaman utama dengan overview</li>
+                        <li><strong>Engineers:</strong> Manajemen data engineer</li>
+                        <li><strong>Machines:</strong> Manajemen data mesin</li>
+                        <li><strong>Stock Part:</strong> Manajemen inventory dan FSL</li>
+                        <li><strong>Structure:</strong> Visualisasi struktur organisasi</li>
+                        <li><strong>Decision:</strong> Analisis dan decision support</li>
+                        <li><strong>Toolbox:</strong> Tools dan utilities</li>
+                    </ul>
+                </div>
+            </section>
+        </section>
+    </div>
+
+    <!-- Bagian 4: Screenshot -->
+    <div class="page">
+        <section id="screenshot">
+            <h1>4. 📸 Screenshot Tampilan</h1>
+            
+            <div class="info-box">
+                <strong>📸 Catatan Screenshot:</strong> 
+                Bagian ini berisi placeholder untuk screenshot. Untuk mendapatkan screenshot aktual, 
+                ikuti panduan di file <code>CARA_MENGAMBIL_SCREENSHOT.md</code>
+            </div>
+
+            <h2>4.1 Dashboard</h2>
+            <div class="screenshot-placeholder" data-label="Dashboard - Overview dengan KPI Cards"></div>
+            <div class="screenshot-placeholder" data-label="Dashboard - Peta Interaktif"></div>
+
+            <h2>4.2 Engineers Management</h2>
+            <div class="screenshot-placeholder" data-label="Engineers - Tabel Data"></div>
+            <div class="screenshot-placeholder" data-label="Engineers - Form Tambah/Edit"></div>
+        </section>
+    </div>
+
+    <!-- Bagian 5: Tips -->
+    <div class="page">
+        <section id="tips">
+            <h1>5. 💡 Tips & Trik</h1>
+
+            <div class="feature-box">
+                <h3>✨ Tips Penggunaan</h3>
+                <ul class="icon-list">
+                    <li><strong>Gunakan Keyboard Shortcuts:</strong> Tekan ESC untuk menutup modal</li>
+                    <li><strong>Fullscreen Mode:</strong> Gunakan icon maximize untuk melihat lebih banyak data</li>
+                    <li><strong>Column Visibility:</strong> Sembunyikan kolom yang tidak diperlukan</li>
+                    <li><strong>Export Berkala:</strong> Export data secara berkala untuk backup</li>
+                    <li><strong>Filter Kombinasi:</strong> Kombinasikan beberapa filter untuk hasil spesifik</li>
+                </ul>
+            </div>
+
+            <div class="warning-box">
+                <h3>⚠️ Troubleshooting</h3>
+                <p><strong>Data tidak muncul:</strong> Pastikan backend server berjalan dan file CSV ada</p>
+                <p><strong>Error saat save:</strong> Pastikan file CSV tidak sedang dibuka di aplikasi lain</p>
+                <p><strong>Filter tidak bekerja:</strong> Refresh halaman atau clear browser cache</p>
+            </div>
+        </section>
+
+        <div class="footer">
+            <p><strong>ROC Dashboard</strong> - Panduan Penggunaan v1.0</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">
+                Dokumentasi lengkap fitur dan cara penggunaan sistem ROC Dashboard
+            </p>
+            <p style="font-size: 0.8em; margin-top: 10px; color: #94a3b8;">
+                © 2024 ROC Dashboard. All rights reserved.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Auto-load screenshots from screenshots folder
+         * Converts data-label to filename and tries to load image
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+            const placeholders = document.querySelectorAll('.screenshot-placeholder');
+            
+            placeholders.forEach(function(placeholder) {
+                const label = placeholder.getAttribute('data-label');
+                if (!label) return;
+                
+                // Convert label to filename
+                // Example: "Dashboard Overview" -> "dashboard-overview.png"
+                let filename = label
+                    .toLowerCase()
+                    .replace(/[^\w\s-]/g, '') // Remove special chars except spaces and hyphens
+                    .replace(/\s+/g, '-')     // Replace spaces with hyphens
+                    .replace(/-+/g, '-')      // Replace multiple hyphens with single
+                    .trim();
+                
+                // Try multiple extensions
+                const extensions = ['png', 'jpg', 'jpeg', 'webp'];
+                let imageLoaded = false;
+                
+                extensions.forEach(function(ext) {
+                    if (imageLoaded) return;
+                    
+                    const img = new Image();
+                    img.onload = function() {
+                        // Image exists, replace placeholder
+                        placeholder.classList.add('has-image');
+                        placeholder.innerHTML = '';
+                        placeholder.appendChild(img);
+                        imageLoaded = true;
+                    };
+                    img.onerror = function() {
+                        // Image doesn't exist, try next extension
+                    };
+                    img.src = `screenshots/${filename}.${ext}`;
+                });
+                
+                // Also try with common variations
+                if (!imageLoaded) {
+                    const variations = [
+                        filename.replace(/-/g, '_'),
+                        filename.replace(/dashboard-/, 'dashboard_'),
+                        filename.replace(/engineers-/, 'engineers_'),
+                        filename.replace(/machines-/, 'machines_'),
+                        filename.replace(/stock-/, 'stock_'),
+                    ];
+                    
+                    variations.forEach(function(variation) {
+                        if (imageLoaded) return;
+                        
+                        extensions.forEach(function(ext) {
+                            if (imageLoaded) return;
+                            
+                            const img = new Image();
+                            img.onload = function() {
+                                placeholder.classList.add('has-image');
+                                placeholder.innerHTML = '';
+                                placeholder.appendChild(img);
+                                imageLoaded = true;
+                            };
+                            img.onerror = function() {};
+                            img.src = `screenshots/${variation}.${ext}`;
+                        });
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

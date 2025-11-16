@@ -1,22 +1,31 @@
-import React, { useState, useMemo, useEffect, useCallback, Suspense, lazy, startTransition, useDeferredValue } from "react";
+import React, { useState, useMemo, useEffect, useCallback, Suspense, lazy, startTransition, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import FilterTabs from "../components/ui/FilterTabs.jsx";
-import { useEngineerData, useMachineData, useStockPartData, useFSLLocationData } from "../hooks/useEngineerData.js";
+import SearchableFilter from "../components/ui/SearchableFilter.jsx";
+import { useEngineerData, useMachineData, useStockPartData, useFSLLocationData, useLevelingData } from "../hooks/useEngineerData.js";
+import { useDecisionData } from "../hooks/useDecisionData.js";
+import { getDecisionCards } from "../utils/decisionUtils.js";
 import { useStockPartKPIs } from "../hooks/useStockPartKPIs.js";
 import { useMachineKPIs } from "../hooks/useMachineKPIs.js";
 // Lazy load heavy components for better performance
 const FullscreenChartModal = lazy(() => import("../components/dashboard/FullscreenChartModal.jsx"));
 const MapWithRegions = lazy(() => import("../components/map/MapWithRegions.jsx"));
 const SkillProgress = lazy(() => import("../components/charts/SkillProgress.jsx"));
+const DecisionCard = lazy(() => import("../components/decision/DecisionCard.jsx"));
+const DecisionModal = lazy(() => import("../components/decision/DecisionModal.jsx"));
+const DashboardEngineerKPICards = lazy(() => import("../components/charts/DashboardEngineerKPICards.jsx"));
+// Import LazyChart directly - don't lazy load small components to avoid React chunk issues
+import LazyChart from "../components/charts/LazyChart.jsx";
 
-// Import Recharts directly - it's already optimized by Vite
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
+// Import Recharts directly - it's already optimized by Vite code splitting
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend } from 'recharts';
 
-import { CHART_COLORS_DARK, CHART_COLORS_LIGHT } from "../utils/chartConfig.js";
+import { CHART_COLORS_DARK, CHART_COLORS_LIGHT, OPTIMIZED_BAR_PROPS, OPTIMIZED_LINE_PROPS, OPTIMIZED_PIE_PROPS } from "../utils/chartConfig.js";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { normalizeText, toTitleCase, normalizeAreaGroup } from "../utils/textUtils.js";
 import { parseInstallYear, calculateMachineAge, categorizeByRange, groupByField, objectToChartData, groupByNormalizedAreaGroup } from "../utils/dashboardUtils.js";
 import { limitChartData } from "../utils/chartOptimization.js";
+import { optimizeClickHandler, optimizeTransitionHandler, optimizePointerHandler, deferTransitionHandler } from "../utils/optimizeHandlers.js";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import LoadingSkeleton from "../components/common/LoadingSkeleton.jsx";
 import { getGradientCard, getKPICard, TEXT_STYLES, cn } from "../constants/styles";
@@ -25,6 +34,80 @@ import { useMachineFilters } from "../hooks/useMachineFilters.js";
 import { exportMachinesToCSV } from "../utils/machineUtils.js";
 import toast from 'react-hot-toast';
 
+// Simple compact tooltip component - defined outside to avoid React hooks error
+// Now accepts isDark prop for theme-aware styling
+// Memoized to prevent unnecessary re-renders during chart interactions
+const CompactTooltip = React.memo(({ active, payload, isDark = true }) => {
+  if (!active || !payload || !payload[0]) return null;
+  
+  const data = payload[0].payload;
+  const region = data.name || '';
+  const engineers = data.engineers || 0;
+  const machines = data.machines || 0;
+  const ratio = Math.round(data.ratio || 0);
+  const ratioStatus = ratio < 60 ? 'Surplus' : ratio < 70 ? 'Normal' : 'Overload';
+  const ratioColor = ratio < 60 ? '#10b981' : ratio < 70 ? '#f59e0b' : '#ef4444';
+  
+  return (
+    <div 
+      className={cn(
+        "border border-green-500 rounded px-2 py-1.5 shadow-lg",
+        isDark ? "bg-slate-800" : "bg-white border-green-400"
+      )}
+      style={{
+        fontSize: '10px',
+        maxWidth: '140px'
+      }}
+    >
+      <div className={cn(
+        "font-semibold text-xs mb-1",
+        isDark ? "text-green-400" : "text-green-600"
+      )}>
+        {region}
+      </div>
+      <div className={cn(
+        "space-y-0.5 text-xs",
+        isDark ? "text-slate-300" : "text-gray-700"
+      )}>
+        <div>Eng: <span className={cn(
+          "font-medium",
+          isDark ? "text-green-300" : "text-green-600"
+        )}>{engineers}</span></div>
+        <div>Msn: <span className={cn(
+          "font-medium",
+          isDark ? "text-green-300" : "text-green-600"
+        )}>{machines}</span></div>
+        <div className={cn(
+          "mt-1 pt-1 border-t",
+          isDark ? "border-slate-600" : "border-gray-300"
+        )}>
+          <span className={isDark ? "text-slate-400" : "text-gray-600"}>Rasio: </span>
+          <span className="font-bold" style={{ color: ratioColor }}>{ratio} ({ratioStatus})</span>
+        </div>
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if active state or payload data actually changed
+  if (prevProps.active !== nextProps.active) return false;
+  if (prevProps.isDark !== nextProps.isDark) return false;
+  if (!prevProps.active && !nextProps.active) return true;
+  
+  // Compare payload data
+  const prevPayload = prevProps.payload?.[0]?.payload;
+  const nextPayload = nextProps.payload?.[0]?.payload;
+  
+  if (!prevPayload || !nextPayload) return false;
+  
+  return (
+    prevPayload.name === nextPayload.name &&
+    prevPayload.engineers === nextPayload.engineers &&
+    prevPayload.machines === nextPayload.machines &&
+    prevPayload.ratio === nextPayload.ratio
+  );
+});
+
+CompactTooltip.displayName = 'CompactTooltip';
 
 /**
  * ============================================================================
@@ -58,6 +141,75 @@ export default function Dashboard() {
   const { rows: machines, loading: machinesLoading } = useMachineData();
   const { rows: stockParts, loading: stockPartsLoading } = useStockPartData();
   const { rows: fslLocations, loading: fslLoading } = useFSLLocationData();
+  const { rows: leveling, loading: levelingLoading } = useLevelingData();
+  
+  // Use data directly - don't defer critical data as it blocks rendering
+  // Only defer non-critical calculations, not the data itself
+  
+  // Calculate analysisData - use data directly for faster rendering
+  const analysisData = useDecisionData(
+    Array.isArray(engineers) ? engineers : [],
+    Array.isArray(machines) ? machines : [],
+    Array.isArray(leveling) ? leveling : []
+  );
+  
+  // Top engineers data - memoized to prevent recalculation
+  const topEngineersData = useMemo(() => 
+    analysisData?.topEngineersData || [],
+    [analysisData]
+  );
+  
+  // Create decision card for Top Engineer Performance
+  const engineerPerformanceCard = useMemo(() => {
+    if (!analysisData || topEngineersData.length === 0) return null;
+    const cards = getDecisionCards(analysisData);
+    return cards.find(card => card.id === 'engineer-performance') || null;
+  }, [analysisData, topEngineersData]);
+  
+  // Create decision card for Area Group - Machine Distance
+  const distanceAnalysisCard = useMemo(() => {
+    if (!analysisData) return null;
+    const cards = getDecisionCards(analysisData);
+    return cards.find(card => card.id === 'distance-analysis') || null;
+  }, [analysisData]);
+  
+  // State for decision modal
+  const [activeDecisionModal, setActiveDecisionModal] = useState(null);
+  
+  // State for insight modal (KPI cards)
+  const [insightModal, setInsightModal] = useState(null);
+  
+  // Optimized modal setter with transition
+  const handleSetInsightModal = useCallback((value) => {
+    startTransition(() => {
+      setInsightModal(value);
+    });
+  }, []);
+  
+  // State for lazy loading map - only load when visible
+  const [shouldLoadMap, setShouldLoadMap] = useState(false);
+  const mapSectionRef = useRef(null);
+  
+  // Intersection Observer untuk lazy load map
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !shouldLoadMap) {
+            setShouldLoadMap(true);
+            observer.disconnect(); // Stop observing setelah map loaded
+          }
+        });
+      },
+      { rootMargin: '200px' } // Load 200px sebelum visible
+    );
+    
+    if (mapSectionRef.current) {
+      observer.observe(mapSectionRef.current);
+    }
+    
+    return () => observer.disconnect();
+  }, [shouldLoadMap]);
   
   // ============================================================================
   // UI STATE MANAGEMENT - State untuk filter dan UI interactions
@@ -69,6 +221,7 @@ export default function Dashboard() {
   const [showWarrantyInsightModal, setShowWarrantyInsightModal] = useState(false);
   const [showExpiringSoonModal, setShowExpiringSoonModal] = useState(false);
   const [showMachineListModal, setShowMachineListModal] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [machineListWarrantyFilter, setMachineListWarrantyFilter] = useState(""); // "On Warranty" or "Out Of Warranty"
   const [monthlyMachineData, setMonthlyMachineData] = useState([]);
   const [loadingMonthly, setLoadingMonthly] = useState(true);
@@ -92,7 +245,7 @@ export default function Dashboard() {
   
   // Prevent body scroll when any modal is open
   useEffect(() => {
-    const hasOpenModal = showMachineListModal || showActivationModal || showWarrantyInsightModal || showExpiringSoonModal || fullscreenChart;
+    const hasOpenModal = showMachineListModal || showActivationModal || showWarrantyInsightModal || showExpiringSoonModal || showCustomerModal || fullscreenChart;
     
     if (hasOpenModal) {
       // Save current scroll position
@@ -229,8 +382,7 @@ export default function Dashboard() {
     }
   }, [modalFilteredMachines, machineListWarrantyFilter]);
   
-  // Defer filter value to reduce re-renders during typing
-  const deferredFilterValue = useDeferredValue(filterValue);
+  // Use filter value directly - debouncing is handled in SearchableFilter component
   
   // Fetch monthly machine data from API
   useEffect(() => {
@@ -359,8 +511,8 @@ export default function Dashboard() {
     // Ensure engineers is an array
     if (!Array.isArray(engineers)) return [];
     
-    // Use deferredFilterValue for heavy calculations to avoid blocking UI
-    const activeFilter = deferredFilterValue || filterValue;
+    // Use filterValue directly - debouncing is handled in SearchableFilter
+    const activeFilter = filterValue;
     if (!activeFilter) return engineers;
     const key = category === "REGION" ? "region" : category === "VENDOR" ? "vendor" : "area_group";
     
@@ -379,7 +531,37 @@ export default function Dashboard() {
     }
     
     return engineers.filter((r) => r && typeof r === 'object' && r[key] === activeFilter);
-  }, [engineers, category, deferredFilterValue, filterValue]);
+  }, [engineers, category, filterValue]);
+  
+  // Cache engineer-to-region mappings to avoid recalculating on every filter
+  const engineerRegionMappings = useMemo(() => {
+    if (!Array.isArray(engineers)) return { areaGroupToRegion: new Map(), vendorToRegion: new Map() };
+    
+    const areaGroupToRegion = new Map();
+    const vendorToRegion = new Map();
+    
+    engineers.forEach(eng => {
+      if (!eng || typeof eng !== 'object') return;
+      
+      // Map area_group ke region
+      if (eng.area_group && eng.region) {
+        const areaGroup = eng.area_group.toLowerCase().trim();
+        if (!areaGroupToRegion.has(areaGroup)) {
+          areaGroupToRegion.set(areaGroup, eng.region);
+        }
+      }
+      
+      // Map vendor ke region
+      if (eng.vendor && eng.region) {
+        const vendor = eng.vendor.toLowerCase().trim();
+        if (!vendorToRegion.has(vendor)) {
+          vendorToRegion.set(vendor, eng.region);
+        }
+      }
+    });
+    
+    return { areaGroupToRegion, vendorToRegion };
+  }, [engineers]);
   
   /**
    * filteredMachines - Machines yang sudah difilter berdasarkan category & filterValue
@@ -389,79 +571,175 @@ export default function Dashboard() {
    * - VENDOR: Exact match di field customer
    * - AREA GROUP: Pattern matching seperti engineers
    * 
-   * @dependencies [machines, engineers, category, filterValue]
+   * @dependencies [machines, engineerRegionMappings, category, filterValue]
    */
   const filteredMachines = useMemo(() => {
     // Ensure machines is an array
     if (!Array.isArray(machines)) return [];
-    // Ensure engineers is an array for region filtering
-    const engineersArray = Array.isArray(engineers) ? engineers : [];
     
-    // Use deferredFilterValue for heavy calculations to avoid blocking UI
-    const activeFilter = deferredFilterValue || filterValue;
+    // Use filterValue directly - debouncing is handled in SearchableFilter
+    const activeFilter = filterValue;
     if (!activeFilter) return machines;
+    
     if (category === "REGION") {
-      // Filter berdasarkan region engineer yang terkait dengan machine
-      // Atau gunakan area_group sebagai proxy untuk region jika tidak ada mapping
-      // Asumsi: machines memiliki field region atau kita filter berdasarkan engineer region
+      // Use cached mappings instead of recalculating
+      const { areaGroupToRegion, vendorToRegion } = engineerRegionMappings;
+      
       return machines.filter((machine) => {
         if (!machine || typeof machine !== 'object') return false;
-        // Cari engineer yang sesuai dengan machine ini
-        const relatedEngineer = engineersArray.find(eng => 
-          eng && typeof eng === 'object' && (
-            eng.area_group === machine.area_group || 
-            eng.vendor === machine.customer
-          )
-        );
-        return (relatedEngineer?.region === activeFilter) || (machine.region === activeFilter);
+        
+        let region = null;
+        
+        // Cek machine.region langsung (jika format Region 1/2/3)
+        if (machine.region && (machine.region === 'Region 1' || machine.region === 'Region 2' || machine.region === 'Region 3')) {
+          region = machine.region;
+        }
+        // Cari melalui area_group menggunakan cached mapping
+        else if (machine.area_group) {
+          const areaGroup = machine.area_group.toLowerCase().trim();
+          region = areaGroupToRegion.get(areaGroup);
+        }
+        
+        // Jika masih belum ketemu, cari melalui vendor/customer menggunakan cached mapping
+        if (!region && machine.customer) {
+          const vendor = machine.customer.toLowerCase().trim();
+          region = vendorToRegion.get(vendor);
+        }
+        
+        return region === activeFilter;
       });
     } else if (category === "VENDOR") {
       return machines.filter((r) => r && typeof r === 'object' && r.customer === activeFilter);
     } else if (category === "AREA GROUP") {
       // Pattern matching: "Surabaya" akan match dengan "Surabaya 1", "Surabaya 2", dll
+      const filterLower = activeFilter.toLowerCase().trim();
       return machines.filter((r) => {
         if (!r || typeof r !== 'object') return false;
         const rawValue = r.area_group;
         if (!rawValue || typeof rawValue !== 'string') return false;
         const value = rawValue.toLowerCase().trim().replace(/\s+/g, ' ');
-        const filter = activeFilter.toLowerCase().trim();
         // Hapus angka di akhir untuk matching
         const valueBase = value.replace(/\s+\d+$/, '');
-        return valueBase === filter;
+        return valueBase === filterLower;
       });
     }
     return machines;
-  }, [machines, engineers, category, deferredFilterValue, filterValue]);
+  }, [machines, engineerRegionMappings, category, filterValue]);
   
   // ============================================================================
   // AGGREGATED DATA - REFACTORED dengan groupByField helper
   // ============================================================================
   
   /**
-   * machinesByRegion - REFACTORED dengan groupByField helper
-   * 
-   * Agregasi jumlah mesin per region (provinsi).
-   * Menggunakan helper function groupByField() untuk consistency.
+   * machinesByRegion - Agregasi mesin per provinsi (untuk display di chart)
    * 
    * Output format: { "Jawa Timur": 45, "DKI Jakarta": 32, ... }
    */
-  const machinesByRegion = useMemo(() => 
+  const machinesByProvince = useMemo(() => 
     groupByField(machines, 'provinsi', 'Unknown'),
     [machines]
   );
   
   /**
-   * engineersByRegion - REFACTORED dengan groupByField helper
+   * machinesByEngineerRegion - Agregasi mesin per region engineer (Region 1/2/3)
    * 
-   * Agregasi jumlah engineer per region (Region 1/2/3).
-   * Menggunakan helper function groupByField() untuk consistency.
+   * Mengelompokkan machines berdasarkan region engineer yang terkait.
+   * Mapping melalui area_group atau vendor/customer.
+   * Hanya menghitung machines yang terhubung ke region valid: "Region 1", "Region 2", "Region 3"
    * 
-   * Output format: { "Region 1": 15, "Region 2": 20, ... }
+   * Output format: { "Region 1": 150, "Region 2": 200, "Region 3": 180, ... }
    */
-  const engineersByRegion = useMemo(() => 
-    groupByField(engineers, 'region', 'Unknown'),
-    [engineers]
-  );
+  const machinesByEngineerRegion = useMemo(() => {
+    if (!Array.isArray(machines) || !Array.isArray(engineers)) return {};
+    
+    // Valid regions only
+    const validRegions = ['Region 1', 'Region 2', 'Region 3'];
+    
+    // Use cached mappings instead of recalculating
+    const { areaGroupToRegion, vendorToRegion } = engineerRegionMappings;
+    
+    // Kelompokkan machines berdasarkan region (hanya region valid)
+    const machinesByRegion = {};
+    
+    // Initialize with valid regions
+    validRegions.forEach(region => {
+      machinesByRegion[region] = 0;
+    });
+    
+    machines.forEach(machine => {
+      if (!machine || typeof machine !== 'object') return;
+      
+      let region = null;
+      
+      // Coba cari region dari machine.region langsung (jika ada dan valid)
+      if (machine.region && validRegions.includes(machine.region)) {
+        region = machine.region;
+      }
+      // Coba cari melalui area_group menggunakan cached mapping
+      else if (machine.area_group) {
+        const areaGroup = machine.area_group.toLowerCase().trim();
+        const mappedRegion = areaGroupToRegion.get(areaGroup);
+        if (mappedRegion && validRegions.includes(mappedRegion)) {
+          region = mappedRegion;
+        }
+      }
+      
+      // Jika masih belum ketemu, coba melalui vendor/customer menggunakan cached mapping
+      if (!region && machine.customer) {
+        const vendor = machine.customer.toLowerCase().trim();
+        const mappedRegion = vendorToRegion.get(vendor);
+        if (mappedRegion && validRegions.includes(mappedRegion)) {
+          region = mappedRegion;
+        }
+      }
+      
+      // Hanya hitung jika region valid
+      if (region && validRegions.includes(region)) {
+        machinesByRegion[region] = (machinesByRegion[region] || 0) + 1;
+      }
+    });
+    
+    return machinesByRegion;
+  }, [machines, engineerRegionMappings]);
+  
+  /**
+   * engineersByRegion - Agregasi jumlah engineer per region (Region 1/2/3)
+   * 
+   * Hanya menghitung engineer dengan region valid: "Region 1", "Region 2", "Region 3"
+   * Mengecualikan area_group seperti "Jakarta" yang mungkin terisi di field region
+   * 
+   * Output format: { "Region 1": 15, "Region 2": 20, "Region 3": 10, ... }
+   */
+  const engineersByRegion = useMemo(() => {
+    // Valid regions only
+    const validRegions = ['Region 1', 'Region 2', 'Region 3'];
+    const regionCounts = {};
+    
+    // Initialize with valid regions
+    validRegions.forEach(region => {
+      regionCounts[region] = 0;
+    });
+    
+    // Count engineers with valid regions only
+    if (Array.isArray(engineers)) {
+      engineers.forEach(eng => {
+        if (!eng || typeof eng !== 'object') return;
+        const region = eng.region;
+        // Only count if region is one of the valid regions
+        if (region && validRegions.includes(region)) {
+          regionCounts[region] = (regionCounts[region] || 0) + 1;
+        }
+      });
+    }
+    
+    return regionCounts;
+  }, [engineers]);
+  
+  /**
+   * machinesByRegion - Alias untuk machinesByEngineerRegion (untuk kompatibilitas)
+   * Digunakan untuk perhitungan rasio mesin/engineer per region
+   */
+  const machinesByRegion = machinesByEngineerRegion;
   
   /**
    * machinesByAreaGroup - REFACTORED dengan groupByNormalizedAreaGroup helper
@@ -541,24 +819,61 @@ export default function Dashboard() {
   
   const warrantyPercentage = currentMachines > 0 ? (onWarranty / currentMachines * 100) : 0;
 
-  // Stock Parts Data Processing
+  // Calculate top customers
+  const allCustomers = useMemo(() => {
+    const customers = {};
+    machines.forEach(m => {
+      const customer = m.customer || 'Unknown';
+      customers[customer] = (customers[customer] || 0) + 1;
+    });
+    return Object.entries(customers).sort((a, b) => b[1] - a[1]);
+  }, [machines]);
+
+  const topCustomers = useMemo(() => {
+    return (allCustomers || []).slice(0, 10).map(([name, value]) => ({ name, value }));
+  }, [allCustomers]);
+
+  const customersChartData = useMemo(() => {
+    return (allCustomers || []).slice(0, 10).map(([name, value]) => ({ name, value }));
+  }, [allCustomers]);
+
+  // Stock Parts Data Processing - safe handling for non-critical data
   const validStockParts = useMemo(() => {
-    if (!stockParts || stockParts.length === 0) return [];
+    // Don't process if still loading to avoid blocking
+    if (stockPartsLoading || !stockParts || stockParts.length === 0) return [];
     return stockParts.filter(part => {
       const partNumber = part.part_number || part['part number'] || '';
       return partNumber.toLowerCase() !== 'region';
     });
-  }, [stockParts]);
+  }, [stockParts, stockPartsLoading]);
 
-  // Stock Alerts KPIs
-  const stockKPIs = useStockPartKPIs(validStockParts, validStockParts, fslLocations || []);
-  const stockAlerts = stockKPIs?.stockAlerts || {
-    criticalCount: 0,
-    urgentCount: 0,
-    warningCount: 0,
-    priorityCriticalCount: 0,
-    totalLowStock: 0
-  };
+  // Stock Alerts KPIs - only calculate when data is ready
+  // Use empty arrays if still loading to prevent blocking
+  const stockKPIs = useStockPartKPIs(
+    validStockParts, 
+    validStockParts, 
+    (fslLoading || !fslLocations) ? [] : (fslLocations || [])
+  );
+  
+  // Only use stockKPIs if data is ready, otherwise use defaults
+  const stockAlerts = useMemo(() => {
+    if (stockPartsLoading || fslLoading || validStockParts.length === 0) {
+      return {
+        criticalCount: 0,
+        urgentCount: 0,
+        warningCount: 0,
+        priorityCriticalCount: 0,
+        totalLowStock: 0
+      };
+    }
+    return stockKPIs?.stockAlerts || {
+      criticalCount: 0,
+      urgentCount: 0,
+      warningCount: 0,
+      priorityCriticalCount: 0,
+      totalLowStock: 0
+    };
+  }, [stockKPIs, stockPartsLoading, fslLoading, validStockParts]);
 
   // Calculate detailed warranty insights for modal
   const warrantyInsights = useMemo(() => {
@@ -659,71 +974,44 @@ export default function Dashboard() {
     return '😰';
   }, [currentRatio]);
   
-  const efficiencyPercentage = useMemo(() => {
+  const efficiencyPercentageValue = useMemo(() => {
+    // Return numeric value for calculations
     // Efisiensi operasional berdasarkan ratio mesin per engineer
     // Konsep: Efisiensi tinggi = ratio rendah (engineer tidak overload)
     // Optimal ratio = 60 mesin/engineer (dianggap 100% efisiensi)
     // 
-    // Formula baru yang lebih masuk akal:
+    // Formula:
     // - Ratio <= 60: Efisiensi = 100% (optimal, engineer tidak overload)
     // - Ratio 60-70: Efisiensi menurun linear dari 100% ke 85%
     // - Ratio > 70: Efisiensi = (60 / ratio) * 100, dibatasi maksimal 85%
-    // 
-    // Contoh:
-    // - Ratio 30: 100% (sangat efisien, underutilized)
-    // - Ratio 60: 100% (optimal)
-    // - Ratio 70: 85% (moderate)
-    // - Ratio 100: (60/100)*100 = 60%
-    // - Ratio 120: (60/120)*100 = 50%
-    // - Ratio 299: (60/299)*100 = 20%
     
-    if (currentRatio <= 0) return '0%';
+    if (currentRatio <= 0) return 0;
     
     const optimalRatio = 60;
     const moderateThreshold = 70;
     
     if (currentRatio <= optimalRatio) {
-      // Ratio optimal atau lebih rendah = efisiensi maksimal
-      return '100%';
+      return 100;
     } else if (currentRatio <= moderateThreshold) {
-      // Ratio antara 60-70: efisiensi turun linear dari 100% ke 85%
-      // Formula: 100 - ((ratio - 60) / 10) * 15
       const efficiency = 100 - ((currentRatio - optimalRatio) / (moderateThreshold - optimalRatio)) * 15;
-      return `${Math.max(85, Math.round(efficiency))}%`;
+      return Math.max(85, Math.round(efficiency));
     } else {
-      // Ratio > 70: efisiensi = (60 / ratio) * 100
-      // Ini memastikan efisiensi selalu <= 85% untuk ratio > 70
       const efficiency = (optimalRatio / currentRatio) * 100;
-      // Batasi maksimal 85% (karena untuk ratio 70 sudah 85%)
-      return `${Math.max(0, Math.min(85, Math.round(efficiency)))}%`;
+      return Math.max(0, Math.min(85, Math.round(efficiency)));
     }
   }, [currentRatio]);
+  
+  const efficiencyPercentage = useMemo(() => {
+    return `${efficiencyPercentageValue}%`;
+  }, [efficiencyPercentageValue]);
+  
+  const efficiencyWidth = useMemo(() => {
+    return `${efficiencyPercentageValue}%`;
+  }, [efficiencyPercentageValue]);
   
   const loadPercentage = useMemo(() => {
     const maxLoad = 70;
     return `${Math.min(100, Math.round((currentRatio / maxLoad) * 100))}%`;
-  }, [currentRatio]);
-  
-  const efficiencyWidth = useMemo(() => {
-    // Width untuk progress bar harus sesuai dengan efficiencyPercentage
-    // Menggunakan logic yang sama dengan efficiencyPercentage
-    
-    if (currentRatio <= 0) return '0%';
-    
-    const optimalRatio = 60;
-    const moderateThreshold = 70;
-    
-    if (currentRatio <= optimalRatio) {
-      return '100%';
-    } else if (currentRatio <= moderateThreshold) {
-      // Linear interpolation: 100 - ((ratio - 60) / 10) * 15
-      const efficiency = 100 - ((currentRatio - optimalRatio) / (moderateThreshold - optimalRatio)) * 15;
-      return `${Math.max(85, efficiency)}%`;
-    } else {
-      // Formula: (60 / ratio) * 100, maksimal 85%
-      const efficiency = (optimalRatio / currentRatio) * 100;
-      return `${Math.max(0, Math.min(85, efficiency))}%`;
-    }
   }, [currentRatio]);
   
   const loadWidth = useMemo(() => {
@@ -978,8 +1266,9 @@ export default function Dashboard() {
       }
     });
     
-    // Convert ke format chart
-    return objectToChartData(ageGroups, 'range', 'count');
+    // Convert ke format chart and limit data
+    const chartData = objectToChartData(ageGroups, 'range', 'count');
+    return limitChartData(chartData, 20);
   }, [filteredMachines]);
   
   /**
@@ -1005,9 +1294,10 @@ export default function Dashboard() {
       }
     });
     
-    // Convert ke format chart dan sort by year
+    // Convert ke format chart, sort by year, and limit data
     const chartData = objectToChartData(yearCounts, 'year', 'count');
-    return chartData.sort((a, b) => a.year - b.year);
+    const sortedData = chartData.sort((a, b) => a.year - b.year);
+    return limitChartData(sortedData, 30);
   }, [filteredMachines]);
   
   // ============================================================================
@@ -1025,79 +1315,131 @@ export default function Dashboard() {
   const handleEngineerClick = useCallback((engineer) => {
     navigate('/engineers', { state: { selectedEngineer: engineer } });
   }, [navigate]);
-  
-  // Memoize topRegions calculation for breakdown chart
+
+  // Memoize topRegions calculation for breakdown chart with debounced updates
   const topRegionsChart = useMemo(() => {
-    const topRegions = Object.entries(engineersByRegion)
-      .map(([name, value]) => ({ 
-        name, 
-        value,
-        ratio: machinesByRegion?.[name] ? Math.round(machinesByRegion[name] / value) : 0
-      }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 3);
+    // Valid regions only - filter out area_group names like Jakarta
+    const validRegions = ['Region 1', 'Region 2', 'Region 3'];
     
-    if (topRegions.length === 0) {
+    // Sort by region order (Region 1, Region 2, Region 3)
+    const sortByRegionOrder = (a, b) => {
+      const orderA = validRegions.indexOf(a.name);
+      const orderB = validRegions.indexOf(b.name);
+      // If not found, put at end
+      if (orderA === -1) return 1;
+      if (orderB === -1) return -1;
+      return orderA - orderB;
+    };
+    
+    const topRegions = Object.entries(engineersByRegion)
+      .filter(([name]) => validRegions.includes(name)) // Only include valid regions
+      .map(([name, value]) => {
+        const machines = machinesByRegion?.[name] || 0;
+        const ratio = value > 0 ? Math.round(machines / value) : 0;
+        return { 
+          name, 
+          engineers: value,
+          machines,
+          ratio
+        };
+      })
+      .sort(sortByRegionOrder); // Sort by region order (Region 1, 2, 3)
+    
+    if (topRegions.length === 0 || topRegions.every(r => r.engineers === 0)) {
       return (
-        <ResponsiveContainer width="100%" height={50}>
-          <BarChart data={[
-            { name: 'Filter', value: currentEngineers },
-            { name: 'Total', value: totalEngineers }
-          ]} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #10b981', borderRadius: '8px', padding: '6px 10px' }}
-              labelStyle={{ color: '#e2e8f0', fontSize: '11px', fontWeight: 'bold' }}
-              itemStyle={{ color: '#6ee7b7', fontSize: '11px' }}
-              formatter={(value) => [value.toLocaleString(), 'Jumlah']}
-            />
-            <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} isAnimationActive={false} animationDuration={0} />
-            <XAxis dataKey="name" tick={{ fill: '#cbd5e1', fontSize: 10 }} stroke="#64748b" height={20} />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="space-y-2">
+          <div className={cn(
+            "text-xs text-center py-2",
+            isDark ? "text-slate-400" : "text-gray-600"
+          )}>
+            Tidak ada data engineer per region
+          </div>
+          <div className="flex items-center justify-between text-xs px-2">
+            <span className={isDark ? "text-slate-400" : "text-gray-600"}>Total Engineer:</span>
+            <span className={cn(
+              "font-semibold",
+              isDark ? "text-green-400" : "text-green-600"
+            )}>{currentEngineers.toLocaleString()}</span>
+          </div>
+          {currentEngineers > 0 && currentMachines > 0 && (
+            <div className="flex items-center justify-between text-xs px-2">
+              <span className={isDark ? "text-slate-400" : "text-gray-600"}>Rasio Global:</span>
+              <span className={cn(
+                "font-semibold",
+                isDark ? "text-green-400" : "text-green-600"
+              )}>
+                {Math.round(currentRatio)} mesin/engineer
+              </span>
+            </div>
+          )}
+        </div>
       );
     }
     
     return (
-      <ResponsiveContainer width="100%" height={50}>
-        <BarChart data={topRegions} margin={{ top: 5, right: 5, left: 0, bottom: 20 }}>
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #10b981', borderRadius: '8px', padding: '6px 10px' }}
-            labelStyle={{ color: '#e2e8f0', fontSize: '11px', fontWeight: 'bold' }}
-            itemStyle={{ color: '#6ee7b7', fontSize: '11px' }}
-            formatter={(value, name) => {
-              if (name === 'value') return [value.toLocaleString(), 'Engineer'];
-              return [value, 'Rasio'];
-            }}
-          />
-          <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} isAnimationActive={false} animationDuration={0}>
-            {topRegions.map((entry, index) => {
-              const ratio = parseFloat(entry.ratio);
-              let color = '#10b981'; // green
-              if (ratio > 70) color = '#ef4444'; // red
-              else if (ratio > 60) color = '#f59e0b'; // yellow
-              return <Cell key={`cell-${index}`} fill={color} />;
-            })}
-          </Bar>
-          <XAxis 
-            dataKey="name" 
-            tick={{ fill: '#cbd5e1', fontSize: 9 }} 
-            stroke="#64748b" 
-            height={30}
-            angle={-45}
-            textAnchor="end"
-          />
-        </BarChart>
-      </ResponsiveContainer>
+      <div style={{ minWidth: '100px', minHeight: '85px', position: 'relative', width: '100%', height: '85px', overflow: 'hidden' }}>
+        {/* Use fixed dimensions for small charts to avoid ResizeObserver overhead */}
+        <BarChart width={600} height={85} data={limitChartData(topRegions, 10)} margin={{ top: 30, right: 5, left: 0, bottom: 20 }}>
+            <Tooltip 
+              content={<CompactTooltip isDark={isDark} />}
+              cursor={{ fill: 'rgba(16, 185, 129, 0.15)', strokeWidth: 0 }}
+              wrapperStyle={{ zIndex: 1 }}
+              allowEscapeViewBox={{ x: false, y: true }}
+            />
+              <Bar dataKey="engineers" radius={[4, 4, 0, 0]} {...OPTIMIZED_BAR_PROPS}>
+                {topRegions.map((entry, index) => {
+                  const ratio = parseFloat(entry.ratio);
+                  let color = '#10b981'; // green
+                  if (ratio > 70) color = '#ef4444'; // red
+                  else if (ratio > 60) color = '#f59e0b'; // yellow
+                  return <Cell key={`cell-${index}`} fill={color} />;
+                })}
+              </Bar>
+              <XAxis 
+                dataKey="name" 
+                tick={{ fill: isDark ? '#cbd5e1' : '#4b5563', fontSize: 11, fontWeight: 500 }} 
+                stroke={isDark ? '#64748b' : '#9ca3af'} 
+                height={28}
+              />
+              <YAxis 
+                tick={{ fill: isDark ? '#cbd5e1' : '#4b5563', fontSize: 10 }} 
+                stroke={isDark ? '#64748b' : '#9ca3af'} 
+                width={35}
+                domain={[0, 'dataMax']}
+              />
+            </BarChart>
+      </div>
     );
-  }, [engineersByRegion, machinesByRegion, currentEngineers, totalEngineers]);
+  }, [engineersByRegion, machinesByRegion, isDark]);
 
-  // Check if any data is still loading
-  const loading = engineersLoading || machinesLoading || stockPartsLoading || fslLoading;
+  // Progressive loading - show UI immediately for better FCP/LCP
+  // Only block on critical data (engineers & machines)
+  // Non-critical data (stockParts, fslLocations, leveling) can load in background
+  const criticalDataLoading = engineersLoading || machinesLoading;
+  const nonCriticalDataLoading = stockPartsLoading || fslLoading || levelingLoading;
+  
+  // State untuk progressive rendering - render charts setelah KPI cards
+  const [chartsReady, setChartsReady] = useState(false);
+  
+  useEffect(() => {
+    // Render charts setelah KPI cards ter-render (setelah 100ms)
+    // Ini memungkinkan browser untuk paint KPI cards terlebih dahulu
+    if (!criticalDataLoading) {
+      const timer = setTimeout(() => {
+        setChartsReady(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [criticalDataLoading]);
 
-  // Show loading spinner if any data is still loading
-  if (loading) {
+  // Show minimal loading state - don't block with complex skeleton
+  // Simple spinner is faster to render than complex skeleton UI
+  if (criticalDataLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-900">
+      <div className={cn(
+        "flex items-center justify-center h-screen",
+        isDark ? "bg-slate-900" : "bg-gray-50"
+      )}>
         <LoadingSkeleton type="spinner" message="Memuat data dashboard..." size="lg" />
       </div>
     );
@@ -1109,7 +1451,7 @@ export default function Dashboard() {
       subtitle="Engineering & Machine Management Overview"
     >
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" style={{ overflow: 'visible', position: 'relative' }}>
         {/* Total Machines Card */}
         <div className={cn(getKPICard('blue', true), 'min-h-[200px]')}>
           <div className="flex items-start justify-between mb-3">
@@ -1121,8 +1463,13 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <div className="text-3xl">🖥️</div>
               <button
-                onClick={() => setFullscreenChart('total-machines')}
-                className="text-slate-400 hover:text-blue-400 transition-colors p-2 rounded hover:bg-slate-700/50 bg-blue-600/20 hover:bg-blue-600/30"
+                onClick={optimizeTransitionHandler(() => setFullscreenChart("total-machines"), { startTransition })}
+                className={cn(
+                  "transition-colors p-2 rounded",
+                  isDark 
+                    ? "text-slate-400 hover:text-blue-400 hover:bg-slate-700/50 bg-blue-600/20 hover:bg-blue-600/30"
+                    : "text-gray-600 hover:text-blue-600 hover:bg-gray-200 bg-blue-100 hover:bg-blue-200"
+                )}
                 title="Lihat Insight Detail"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1134,7 +1481,10 @@ export default function Dashboard() {
           {/* Warranty Status Breakdown */}
           <div className="mt-4 space-y-3">
             {/* Progress Bar */}
-            <div className="w-full h-3 bg-slate-700/50 rounded-full overflow-hidden relative">
+            <div className={cn(
+              "w-full h-3 rounded-full overflow-hidden relative",
+              isDark ? "bg-slate-700/50" : "bg-gray-300"
+            )}>
               <div 
                 className="h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-500"
                 style={{ width: `${warrantyPercentage}%` }}
@@ -1149,54 +1499,99 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-2">
               {/* On Warranty - Clickable Button */}
               <button
-                onClick={() => {
+                onClick={optimizeTransitionHandler(() => {
                   setMachineListWarrantyFilter("On Warranty");
                   setShowMachineListModal(true);
-                }}
-                className="bg-green-500/10 rounded-lg p-2.5 hover:bg-green-500/20 transition-all cursor-pointer focus:outline-none focus:ring-0 border-0 text-left"
+                }, { startTransition })}
+                className={cn(
+                  "bg-green-500/10 rounded-lg p-2.5",
+                  "hover:bg-green-500/20 transition-all",
+                  "cursor-pointer focus:outline-none focus:ring-0",
+                  "border-0 text-left"
+                )}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-green-400 text-lg">✅</span>
-                  <span className="text-xs text-green-300 font-semibold">On Warranty</span>
+                  <span className="text-xs text-green-200 font-semibold">
+                    On Warranty
+                  </span>
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-green-400">{onWarranty.toLocaleString()}</span>
-                  <span className="text-xs text-green-300/70">({warrantyPercentage.toFixed(1)}%)</span>
+                  <span className="text-xs font-bold text-green-400">
+                    {onWarranty.toLocaleString()}
+                  </span>
+                  <span className="text-xs text-green-300/70">
+                    ({warrantyPercentage.toFixed(1)}%)
+                  </span>
                 </div>
               </button>
-              
+
               {/* Out of Warranty - Clickable Button */}
               <button
-                onClick={() => {
+                onClick={deferTransitionHandler(() => startTransition(() => {
                   setMachineListWarrantyFilter("Out Of Warranty");
                   setShowMachineListModal(true);
-                }}
-                className="bg-red-500/10 rounded-lg p-2.5 hover:bg-red-500/20 transition-all cursor-pointer focus:outline-none focus:ring-0 border-0 text-left"
+                }))}
+                className={cn(
+                  "bg-red-500/10 rounded-lg p-2.5",
+                  "hover:bg-red-500/20 transition-all",
+                  "cursor-pointer focus:outline-none focus:ring-0",
+                  "border-0 text-left"
+                )}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-red-400 text-lg">⚠️</span>
-                  <span className="text-xs text-red-300 font-semibold">Expired</span>
+                  <span className="text-xs text-red-200 font-semibold">
+                    Expired
+                  </span>
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-red-400">{outOfWarranty.toLocaleString()}</span>
-                  <span className="text-xs text-red-300/70">({(100 - warrantyPercentage).toFixed(1)}%)</span>
+                  <span className="text-xs font-bold text-red-400">
+                    {outOfWarranty.toLocaleString()}
+                  </span>
+                  <span className="text-xs text-red-300/70">
+                    ({(100 - warrantyPercentage).toFixed(1)}%)
+                  </span>
                 </div>
               </button>
             </div>
-            
+
             {/* Quick Summary */}
-            <div className="pt-2 border-t border-slate-700/50">
-              <div className={`flex items-center justify-between text-xs ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
-                <span>Coverage Rate</span>
-                <span className={cn(
-                  "font-semibold",
-                  warrantyPercentage >= 50 ? "text-green-400" : warrantyPercentage >= 30 ? "text-yellow-400" : "text-red-400"
-                )}>{warrantyPercentage.toFixed(1)}%</span>
+            <div className={cn(
+              "pt-2 border-t",
+              isDark ? "border-slate-700/50" : "border-gray-300"
+            )}>
+              <div
+                className={cn(
+                  "flex items-center justify-between text-xs",
+                  isDark ? "text-slate-300" : "text-gray-700"
+                )}
+              >
+                <span>Warranty Rate</span>
+                <span
+                  className={cn(
+                    "font-semibold",
+                    warrantyPercentage >= 50
+                      ? "text-green-400"
+                      : warrantyPercentage >= 30
+                      ? "text-yellow-400"
+                      : "text-red-400"
+                  )}
+                >
+                  {warrantyPercentage.toFixed(1)}%
+                </span>
               </div>
               {warrantyRemaining && warrantyRemaining.avgMonths > 0 && (
-                <div className={`flex items-center justify-between text-xs ${isDark ? 'text-slate-300' : 'text-gray-700'} mt-1`}>
-                  <span>Avg. Remaining</span>
-                  <span className="text-blue-400 font-semibold">{warrantyRemaining.avgMonths} bulan</span>
+                <div
+                  className={cn(
+                    "flex items-center justify-between text-xs mt-1",
+                    isDark ? "text-slate-300" : "text-gray-700"
+                  )}
+                >
+                  <span>Avg. Warranty Duration</span>
+                  <span className="text-blue-400 font-semibold">
+                    {warrantyRemaining.avgMonths} bulan
+                  </span>
                 </div>
               )}
             </div>
@@ -1214,8 +1609,13 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <div className="text-3xl">👨‍💼</div>
               <button
-                onClick={() => setFullscreenChart('total-engineers')}
-                className="text-slate-400 hover:text-green-400 transition-colors p-2 rounded hover:bg-slate-700/50 bg-green-600/20 hover:bg-green-600/30"
+                onClick={() => startTransition(() => setFullscreenChart("total-engineers"))}
+                className={cn(
+                  "transition-colors p-2 rounded",
+                  isDark 
+                    ? "text-slate-400 hover:text-green-400 hover:bg-slate-700/50 bg-green-600/20 hover:bg-green-600/30"
+                    : "text-gray-600 hover:text-green-600 hover:bg-gray-200 bg-green-100 hover:bg-green-200"
+                )}
                 title="Lihat Insight Detail"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1224,31 +1624,87 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 space-y-3">
             {/* Comparison Info */}
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Filter: {currentEngineers.toLocaleString()}</span>
-              <span className="text-slate-500">Total: {totalEngineers.toLocaleString()}</span>
-              <span className="text-green-400 font-semibold">
-                {totalEngineers > 0 ? ((currentEngineers / totalEngineers) * 100).toFixed(1) : 0}%
-              </span>
+            <div className={cn(
+              "flex items-center justify-between text-xs rounded-lg px-2 py-1.5",
+              isDark ? "bg-slate-700/30" : "bg-gray-100"
+            )}>
+              <div className="flex items-center gap-2">
+                <span className={isDark ? "text-slate-400" : "text-gray-600"}>Filter:</span>
+                <span className={cn(
+                  "font-semibold",
+                  isDark ? "text-slate-200" : "text-gray-900"
+                )}>
+                  {currentEngineers.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={isDark ? "text-slate-500" : "text-gray-600"}>Total:</span>
+                <span className={isDark ? "text-slate-300" : "text-gray-700"}>
+                  {totalEngineers.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-green-400 font-bold text-sm">
+                  {totalEngineers > 0
+                    ? ((currentEngineers / totalEngineers) * 100).toFixed(1)
+                    : 0}
+                  %
+                </span>
+              </div>
             </div>
             
-            {/* Ratio Info */}
-            {currentEngineers > 0 && (
-              <div className="flex items-center justify-between text-xs px-1">
-                <span className="text-slate-400">Rasio:</span>
-                <span className={`font-semibold ${
-                  (currentMachines / currentEngineers) < 60 ? 'text-green-400' : 
-                  (currentMachines / currentEngineers) < 70 ? 'text-yellow-400' : 'text-red-400'
-                }`}>
-                  {Math.round(currentMachines / currentEngineers)} mesin/engineer
-                </span>
+            {/* Ratio Info - Enhanced */}
+            {currentEngineers > 0 && currentMachines > 0 ? (
+              <div className={cn(
+                "rounded-lg px-2 py-1.5 border",
+                isDark ? "bg-slate-700/20 border-slate-600/50" : "bg-gray-100 border-gray-300"
+              )}>
+                <div className="flex items-center justify-between">
+                  <span className={cn(
+                    "text-xs",
+                    isDark ? "text-slate-400" : "text-gray-600"
+                  )}>
+                    Rasio Nasional:
+                  </span>
+                  <span
+                    className={cn(
+                      "font-bold text-sm",
+                      currentRatio < 60
+                        ? "text-green-400"
+                        : "text-red-400"
+                    )}
+                  >
+                    {Math.round(currentRatio)} mesin/engineer
+                  </span>
+                </div>
+                <div className={cn(
+                  "flex items-center gap-2 mt-1 text-[10px]",
+                  isDark ? "text-slate-500" : "text-gray-600"
+                )}>
+                  <span>Mesin: {currentMachines.toLocaleString()}</span>
+                  <span>•</span>
+                  <span>
+                    Engineer: {currentEngineers.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className={cn(
+                "text-xs text-center py-1",
+                isDark ? "text-slate-500" : "text-gray-600"
+              )}>
+                {currentEngineers === 0
+                  ? "Tidak ada engineer"
+                  : "Tidak ada mesin"}
               </div>
             )}
             
-            {/* Breakdown Chart - Top 3 Regions */}
-            {topRegionsChart}
+            {/* Breakdown Chart - Regions */}
+            <div className="pt-1 overflow-hidden" style={{ minHeight: '85px', minWidth: '100px' }}>
+              {chartsReady ? topRegionsChart : <div className="text-slate-500 text-xs text-center py-2">Loading chart...</div>}
+            </div>
           </div>
         </div>
         
@@ -1263,8 +1719,13 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <div className="text-3xl">⚙️</div>
               <button
-                onClick={() => setFullscreenChart('machine-ratio')}
-                className="text-slate-400 hover:text-purple-400 transition-colors p-2 rounded hover:bg-slate-700/50 bg-purple-600/20 hover:bg-purple-600/30"
+                onClick={() => startTransition(() => setFullscreenChart('machine-ratio'))}
+                className={cn(
+                  "transition-colors p-2 rounded",
+                  isDark 
+                    ? "text-slate-400 hover:text-purple-400 hover:bg-slate-700/50 bg-purple-600/20 hover:bg-purple-600/30"
+                    : "text-gray-600 hover:text-purple-600 hover:bg-gray-200 bg-purple-100 hover:bg-purple-200"
+                )}
                 title="Lihat Insight Detail"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1273,44 +1734,137 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
-          <div className="mt-4">
-            <ResponsiveContainer width="100%" height={95}>
-              <LineChart data={[
-                { name: 'Opt', value: 60 },
-                { name: 'Skrg', value: currentRatio },
-                { name: 'Max', value: 70 }
-              ]} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #8b5cf6', borderRadius: '8px', padding: '6px 10px' }}
-                  labelStyle={{ color: '#e2e8f0', fontSize: '11px', fontWeight: 'bold' }}
-                  itemStyle={{ color: '#c4b5fd', fontSize: '11px' }}
-                  formatter={(value) => [`${Math.round(value)}`, 'Ratio']}
-                />
-                <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2.5} dot={false} isAnimationActive={false} animationDuration={0} />
-                <XAxis dataKey="name" tick={{ fill: '#cbd5e1', fontSize: 10 }} stroke="#64748b" height={25} />
-                <YAxis tick={{ fill: '#cbd5e1', fontSize: 10 }} stroke="#64748b" domain={[0, 100]} width={35} />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="mt-4 space-y-3">
+            {/* Ratio Status Progress Bar */}
+            <div>
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className={cn(
+                  "font-medium",
+                  isDark ? "text-slate-300" : "text-gray-700"
+                )}>Status Rasio</span>
+                <span className={`font-bold text-xs ${
+                  currentRatio < 60 ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {currentRatio < 50 ? 'Surplus' : currentRatio < 60 ? 'Optimal' : 'Overload'}
+                </span>
+              </div>
+              <div className={cn(
+                "w-full h-3 rounded-full overflow-hidden relative",
+                isDark ? "bg-slate-700/50" : "bg-gray-300"
+              )}>
+                {/* Background zones */}
+                <div className="absolute inset-0 flex">
+                  <div className="w-[60%] bg-green-500/20"></div>
+                  <div className="flex-1 bg-red-500/20"></div>
+                </div>
+                {/* Current ratio indicator - map ratio to progress bar position */}
+                {(() => {
+                  // Map ratio to progress bar position (0-100%)
+                  // Thresholds: <60 (0-60%), 60-70 (60-70%), >70 (70-100%)
+                  let indicatorPosition = 0;
+                  
+                  if (currentRatio < 50) {
+                    // Map 0-60 ratio to 0-60% of bar
+                    indicatorPosition = (currentRatio / 50) * 50;
+                  } else if (currentRatio < 60) {
+                    // Map 60-70 ratio to 60-70% of bar
+                    indicatorPosition = 50 + ((currentRatio - 50) / 10) * 10;
+                  } else {
+                    // Map 70+ ratio to 70-100% of bar
+                    // Use max 140 as upper bound for scaling (70 = 70%, 140 = 100%)
+                    const maxRatio = 140;
+                    const ratioAbove70 = Math.min(currentRatio - 50, maxRatio - 60);
+                    indicatorPosition = 50 + (ratioAbove70 / (maxRatio - 50)) * 30;
+                  }
+                  
+                  // Clamp to 0-100%
+                  indicatorPosition = Math.min(100, Math.max(0, indicatorPosition));
+                  
+                  return (
+                    <div 
+                      className={`absolute top-0 h-full w-1.5 transition-all duration-500 z-10 ${
+                        currentRatio < 60 ? 'bg-green-400 shadow-lg shadow-green-400/50' : 
+                        'bg-red-400 shadow-lg shadow-red-400/50'
+                      }`}
+                      style={{ 
+                        left: `${indicatorPosition}%`,
+                        transform: 'translateX(-50%)'
+                      }}
+                    ></div>
+                  );
+                })()}
+                {/* Marker dots for thresholds */}
+                <div className="absolute inset-0 flex items-center pointer-events-none">
+                  <div className="w-[60%] flex justify-end pr-0.5">
+                    <div className={cn(
+                    "w-1 h-1 rounded-full",
+                    isDark ? "bg-slate-500" : "bg-gray-400"
+                  )}></div>
+                  </div>
+                  </div>
+                </div>
+              <div className={cn(
+                "flex items-center justify-between text-[10px] mt-1 px-1",
+                isDark ? "text-slate-400" : "text-gray-600"
+              )}>
+                <span>&lt;50 Surplus</span>
+                <span>50-60 Optimal</span>
+                <span>&gt;60 Overload</span>
+              </div>
+            </div>
+            
+            {/* Quick Summary */}
+            <div className={cn(
+              "pt-2 border-t",
+              isDark ? "border-slate-700/50" : "border-gray-300"
+            )}>
+              <div className="flex items-center justify-between text-xs">
+                <span className={isDark ? "text-slate-400" : "text-gray-600"}>Mesin</span>
+                <span className={cn(
+                  "font-semibold",
+                  isDark ? "text-slate-200" : "text-gray-900"
+                )}>{currentMachines.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs mt-1">
+                <span className={isDark ? "text-slate-400" : "text-gray-600"}>Engineer</span>
+                <span className={cn(
+                  "font-semibold",
+                  isDark ? "text-slate-200" : "text-gray-900"
+                )}>{currentEngineers.toLocaleString()}</span>
+              </div>
+            </div>
           </div>
         </div>
         
         {/* Efficiency Status Card */}
-        <div className={cn(getKPICard('orange', true), 'min-h-[200px]')}>
+        <div className={cn(getKPICard('orange', true), 'min-h-[200px]')} style={{ position: 'relative', zIndex: 1 }}>
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
-              <p className={TEXT_STYLES.kpiTitle}>Efisiensi</p>
-              <h3 className={cn('text-3xl font-bold', efficiencyColor)}>
-                {efficiencyStatus}
-              </h3>
-              <p className={TEXT_STYLES.kpiSubtitle}>Status beban kerja</p>
+              <p className={TEXT_STYLES.kpiTitle}>Efisiensi Operasional</p>
+              <div className="flex items-baseline gap-2">
+                <h3 className={cn('text-3xl font-bold', efficiencyColor)}>
+                  {efficiencyStatus}
+                </h3>
+                <span className={`text-lg font-semibold ${efficiencyColor}`}>
+                  {efficiencyPercentage}
+                </span>
+              </div>
+              <p className={TEXT_STYLES.kpiSubtitle}>
+                Rasio: {Math.round(currentRatio)} mesin/engineer
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <div className="text-3xl">
                 {efficiencyEmoji}
               </div>
               <button
-                onClick={() => setFullscreenChart('efficiency-status')}
-                className="text-slate-400 hover:text-orange-400 transition-colors p-2 rounded hover:bg-slate-700/50 bg-orange-600/20 hover:bg-orange-600/30"
+                onClick={() => startTransition(() => setFullscreenChart('efficiency-status'))}
+                className={cn(
+                  "transition-colors p-2 rounded",
+                  isDark 
+                    ? "text-slate-400 hover:text-orange-400 hover:bg-slate-700/50 bg-orange-600/20 hover:bg-orange-600/30"
+                    : "text-gray-600 hover:text-orange-600 hover:bg-gray-200 bg-orange-100 hover:bg-orange-200"
+                )}
                 title="Lihat Insight Detail"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1319,35 +1873,104 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
-          <div className="mt-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-200 font-medium">Efisiensi</span>
+          <div className="mt-4 space-y-3">
+            {/* Efficiency Progress Bar */}
+            <div>
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className={cn(
+                  "font-medium",
+                  isDark ? "text-slate-300" : "text-gray-700"
+                )}>Tingkat Efisiensi</span>
                 <span className={`font-bold ${efficiencyColor}`}>
                   {efficiencyPercentage}
                 </span>
               </div>
-              <div className="w-full h-3.5 bg-slate-700/50 rounded-full overflow-hidden">
+              <div className={cn(
+                "w-full h-3.5 rounded-full overflow-hidden relative",
+                isDark ? "bg-slate-700/50" : "bg-gray-300"
+              )}>
+                {/* Background zones - based on efficiency percentage thresholds */}
+                <div className="absolute inset-0 flex">
+                  <div className="w-[85%] bg-green-500/20"></div>
+                  <div className="w-[15%] bg-yellow-500/20"></div>
+                  <div className="flex-1 bg-red-500/20"></div>
+                </div>
+                {/* Progress bar with color based on position */}
                 <div 
                   className={`h-full transition-all duration-500 ${
-                    currentRatio < 60 ? 'bg-gradient-to-r from-green-400 to-green-300' : 
-                    currentRatio < 70 ? 'bg-gradient-to-r from-yellow-400 to-yellow-300' : 
+                    efficiencyPercentageValue >= 85 ? 'bg-gradient-to-r from-green-400 to-green-300' : 
+                    efficiencyPercentageValue >= 60 ? 'bg-gradient-to-r from-yellow-400 to-yellow-300' : 
                     'bg-gradient-to-r from-red-400 to-red-300'
                   }`}
                   style={{ width: efficiencyWidth }}
                 ></div>
+                {/* Threshold markers - visual guides untuk range optimal/normal/overload */}
+                <div className="absolute inset-0 flex items-center pointer-events-none">
+                  <div className={cn(
+                    "h-full w-[85%] border-r",
+                    isDark ? "border-slate-500/30" : "border-gray-400/30"
+                  )}></div>
+                  <div className={cn(
+                    "h-full w-[15%] border-r",
+                    isDark ? "border-slate-500/30" : "border-gray-400/30"
+                  )}></div>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-200 font-medium">Beban</span>
-                <span className="text-slate-200 font-bold">
+              <div className={cn(
+                "flex items-center justify-between text-[10px] mt-1.5 px-1",
+                isDark ? "text-slate-400" : "text-gray-600"
+              )}>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-green-400"></span>
+                  <span>≥85% Good</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+                  <span>60-85% Moderate</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                  <span>&lt;60% Low</span>
+                </span>
+              </div>
+            </div>
+            
+            {/* Beban Kerja */}
+            <div>
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className={cn(
+                  "font-medium",
+                  isDark ? "text-slate-300" : "text-gray-700"
+                )}>Rasio Engineer / Mesin</span>
+                <span className={cn(
+                  "font-bold",
+                  isDark ? "text-slate-200" : "text-gray-900"
+                )}>
                   {loadPercentage}
                 </span>
               </div>
-              <div className="w-full h-3.5 bg-slate-700/50 rounded-full overflow-hidden">
+              <div className={cn(
+                "w-full h-3 rounded-full overflow-hidden",
+                isDark ? "bg-slate-700/50" : "bg-gray-300"
+              )}>
                 <div 
                   className="h-full bg-gradient-to-r from-slate-400 to-slate-500 transition-all duration-500"
-                  style={{ width: loadWidth }}
+                  style={{ width: loadPercentage }}
                 ></div>
+              </div>
+            </div>
+            
+            {/* Status Indicators */}
+            <div className="pt-2 border-t border-slate-700/50">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-slate-700/30 rounded px-2 py-1.5">
+                  <div className="text-slate-400 text-[10px] mb-0.5">Total Mesin</div>
+                  <div className="text-slate-200 font-bold text-sm">{currentMachines.toLocaleString()}</div>
+                </div>
+                <div className="bg-slate-700/30 rounded px-2 py-1.5">
+                  <div className="text-slate-400 text-[10px] mb-0.5">Total Engineer</div>
+                  <div className="text-slate-200 font-bold text-sm">{currentEngineers.toLocaleString()}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -1367,7 +1990,7 @@ export default function Dashboard() {
           <div className="flex justify-between items-center p-2 sm:p-4 border-b border-slate-700 flex-shrink-0" style={{ height: 'auto' }}>
             <h2 className="text-lg sm:text-2xl font-bold text-slate-100">Sebaran Service Point HCS-IDN</h2>
             <button 
-              onClick={() => setFullscreenChart(null)} 
+              onClick={() => startTransition(() => setFullscreenChart(null))} 
               className="text-slate-400 hover:text-white transition-colors p-1.5 sm:p-2 rounded-lg hover:bg-slate-800"
             >
               <X size={20} className="sm:w-6 sm:h-6" />
@@ -1399,7 +2022,7 @@ export default function Dashboard() {
 
       {/* Maps Section - Full Width */}
       {fullscreenChart !== "map" && (
-      <div className="bg-[var(--card-bg)] p-2 sm:p-4 rounded-lg relative flex flex-col" style={{ minHeight: '400px', height: '400px', maxHeight: '600px' }}>
+      <div ref={mapSectionRef} className="bg-[var(--card-bg)] p-2 sm:p-4 rounded-lg relative flex flex-col h-[400px] sm:h-[500px] lg:h-[600px]">
         <div className="flex justify-between items-center mb-2 flex-shrink-0">
           <h2 className="text-sm sm:text-lg font-semibold text-slate-100">Sebaran Service Point HCS-IDN</h2>
           <button 
@@ -1413,62 +2036,46 @@ export default function Dashboard() {
           </button>
         </div>
         
-        {/* Simple Compact Filter - Above Map */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-2 pb-2 border-b border-slate-700/50 flex-shrink-0">
-          {/* Compact Filter Tabs */}
-          <div className="flex gap-1 sm:gap-2 flex-wrap">
+        {/* Minimal Filter */}
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
             {[
-              { name: "REGION", label: "Region" },
-              { name: "VENDOR", label: "Vendor" },
-              { name: "AREA GROUP", label: "Area" }
+            { name: "REGION", label: "Region" },
+            { name: "VENDOR", label: "Vendor" },
+            { name: "AREA GROUP", label: "Area" }
             ].map((tab) => (
               <button
                 key={tab.name}
                 onClick={() => {
                   startTransition(() => {
                     setCategory(tab.name);
+                  setFilterValue("");
                   });
                 }}
-                className={`text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2 rounded transition-all ${
-                  category === tab.name 
-                    ? 'bg-blue-600/80 text-white font-semibold' 
-                    : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/60'
-                }`}
-                title={tab.label}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                    category === tab.name 
+                  ? 'bg-blue-600 text-white' 
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
               >
-                {tab.label}
+              {tab.label}
               </button>
             ))}
-          </div>
-          <div className="flex items-center gap-1 sm:gap-2 sm:ml-auto">
-            <select 
-              className="text-xs sm:text-sm bg-slate-800/70 text-slate-200 px-2 sm:px-3 py-1.5 sm:py-2 rounded border border-slate-600/50 focus:outline-none focus:border-blue-400/70 cursor-pointer flex-1 sm:flex-none min-w-0"
-              value={filterValue}
-              onChange={(e) => {
-                const value = e.target.value;
-                setFilterValue(value); // Update immediately for UI responsiveness
-                // Heavy calculations automatically use deferredFilterValue via useDeferredValue
-              }}
-            >
-              <option value="">All {category}s</option>
-              {options.map((o) => (
-                <option key={o} value={o}>{o}</option>
-              ))}
-            </select>
-            {filterValue && (
-              <button
-                onClick={() => {
+          <div className="w-auto min-w-[120px] max-w-[160px]">
+              <SearchableFilter
+                options={options}
+                value={filterValue}
+                onChange={(value) => {
                   startTransition(() => {
-                    setFilterValue("");
+                    setFilterValue(value);
                   });
                 }}
-                className="text-slate-400 hover:text-red-400 text-sm sm:text-base font-bold px-1.5 sm:px-2 py-1 flex-shrink-0"
-                title="Clear"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+              placeholder={`${category === "REGION" ? "Region" : category === "VENDOR" ? "Vendor" : "Area"}...`}
+              searchPlaceholder={`Cari...`}
+              label=""
+              icon={null}
+                showCount={false}
+              />
+            </div>
         </div>
         
         {/* Check if any modal is open */}
@@ -1487,59 +2094,64 @@ export default function Dashboard() {
               }}
               className={isModalOpen ? 'map-container-modal-open' : ''}
             >
-              <Suspense fallback={<div className="flex items-center justify-center h-full min-h-[300px]"><div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-blue-500"></div></div>}>
-                <MapWithRegions 
-                  machines={filteredMachines} 
-                  engineers={filteredEngineers}
-                  onEngineerClick={handleEngineerClick}
-                />
-              </Suspense>
+              {shouldLoadMap ? (
+                <Suspense fallback={<div className="flex items-center justify-center h-full min-h-[300px]"><div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-blue-500"></div></div>}>
+                  <MapWithRegions 
+                    machines={filteredMachines} 
+                    engineers={filteredEngineers}
+                    onEngineerClick={handleEngineerClick}
+                  />
+                </Suspense>
+              ) : (
+                <div className="flex items-center justify-center h-full min-h-[300px]">
+                  <div className="text-center">
+                    <div className="animate-pulse text-slate-400 mb-2">📍</div>
+                    <p className="text-sm text-slate-400">Loading map...</p>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
       </div>
       )}
 
-      {/* Training Progress & Coverage Garansi - Side by Side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-        {/* Training Skill Progress - Modern Design */}
-        <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 p-5 rounded-xl border border-slate-700/50 relative min-h-[400px] max-h-[500px] flex flex-col shadow-lg">
-          <div className="flex justify-between items-center mb-4 flex-shrink-0">
-            <div>
-              <h2 className="text-lg font-bold text-slate-100 mb-1">Training Skill Progress</h2>
-              <p className="text-xs text-slate-400">{filteredEngineers.length} engineers</p>
+      {/* Engineer Training KPI Cards - Below Maps */}
+      <div className="mt-6 mb-6">
+        <Suspense fallback={
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {[1, 2, 3].map(i => (
+              <div key={i} className={cn(getKPICard('blue', true), 'min-h-[300px]')}>
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
-            <button 
-              onClick={() => setFullscreenChart("training-skills")} 
-              className="p-2 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 border border-slate-700/50 hover:border-blue-500/30 transition-all"
-              title="Lihat Detail Fullscreen"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-              </svg>
-            </button>
           </div>
-          {!fullscreenChart && (
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800/50">
-              {filteredEngineers.length > 0 ? (
-                filteredEngineers.map((engineer, idx) => (
-                  <Suspense key={idx} fallback={<div className="h-24 bg-slate-800/30 rounded-xl animate-pulse" />}>
-                    <SkillProgress engineer={engineer} />
+            ))}
+          </div>
+        }>
+          <DashboardEngineerKPICards engineers={engineers} setInsightModal={handleSetInsightModal} />
                   </Suspense>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-slate-500">
-                  <div className="w-16 h-16 rounded-full bg-slate-700/30 flex items-center justify-center mb-3">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
                   </div>
-                  <p className="text-sm font-medium">No engineers data available</p>
+
+      {/* Top Engineer Performance & Coverage Garansi - Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+        {/* Top Engineer Performance & Coverage Garansi - Stacked */}
+        <div className="flex flex-col gap-4">
+          {/* Top Engineer Performance Card */}
+        {engineerPerformanceCard && (
+          <Suspense fallback={
+            <div className={cn(getGradientCard('blue', true), 'min-h-[300px]')}>
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                 </div>
-              )}
             </div>
-          )}
-        </div>
+          }>
+            <DecisionCard 
+              card={engineerPerformanceCard}
+              onClick={() => startTransition(() => setActiveDecisionModal(engineerPerformanceCard))}
+            />
+          </Suspense>
+        )}
 
         {/* Coverage Garansi Card */}
         <div className={cn(getKPICard('green', true), 'min-h-[400px] max-h-[500px] flex flex-col overflow-hidden')}>
@@ -1552,9 +2164,9 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  console.log('Opening Warranty Insight Modal...');
-                  console.log('warrantyInsights:', warrantyInsights);
-                  setShowWarrantyInsightModal(true);
+                  startTransition(() => {
+                    setShowWarrantyInsightModal(true);
+                  });
                 }}
                 className="text-slate-400 hover:text-green-400 transition-colors p-2 rounded hover:bg-slate-700/50 bg-green-600/20 hover:bg-green-600/30"
                 title="Lihat Insight Detail"
@@ -1631,7 +2243,7 @@ export default function Dashboard() {
                     </div>
                     {warrantyInsights.expiringSoonMachines.length > 3 && (
                       <button
-                        onClick={() => setShowExpiringSoonModal(true)}
+                        onClick={() => startTransition(() => setShowExpiringSoonModal(true))}
                         className="text-xs text-green-400 hover:text-green-300 transition-colors font-semibold"
                       >
                         Lihat Detail →
@@ -1697,6 +2309,137 @@ export default function Dashboard() {
         </div>
       </div>
 
+        {/* Right Column */}
+        <div className="flex flex-col gap-4">
+          {/* Area Group - Machine Distance Card */}
+        {distanceAnalysisCard && (
+          <Suspense fallback={
+            <div className={cn(getGradientCard('orange', true), 'min-h-[300px]')}>
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+              </div>
+            </div>
+          }>
+            <DecisionCard 
+              card={distanceAnalysisCard}
+              onClick={() => setActiveDecisionModal(distanceAnalysisCard)}
+            />
+          </Suspense>
+        )}
+
+        {/* Top Customer Card */}
+        <div className={cn(getKPICard('cyan', true), 'min-h-[400px] max-h-[500px] flex flex-col overflow-hidden')}>
+          <div className="flex items-start justify-between mb-4 flex-shrink-0">
+            <div className="flex-1 min-w-0">
+              <p className={TEXT_STYLES.kpiTitle}>Top Customer</p>
+              <h3 className={cn(TEXT_STYLES.heading3, 'truncate break-words')} title={topCustomers[0]?.name}>{topCustomers[0]?.name || 'N/A'}</h3>
+              <p className={cn('text-xs text-cyan-400 mt-1')}>{topCustomers[0]?.value || 0} unit • {machines.length > 0 ? ((topCustomers[0]?.value || 0) / machines.length * 100).toFixed(1) : 0}%</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => startTransition(() => setShowCustomerModal(true))}
+                className="text-slate-400 hover:text-cyan-400 transition-colors p-2 rounded hover:bg-slate-700/50 bg-cyan-600/20 hover:bg-cyan-600/30"
+                title="Lihat Insight Detail"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Key Stats Grid */}
+          <div className="grid grid-cols-2 gap-2 mb-3 flex-shrink-0">
+            <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50">
+              <div className="text-xs text-slate-400">Total Customer</div>
+              <div className="text-lg font-bold text-cyan-400">
+                {allCustomers.length}
+              </div>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50">
+              <div className="text-xs text-slate-400">Dominasi</div>
+              <div className="text-lg font-bold text-cyan-400">
+                {machines.length > 0 ? ((topCustomers[0]?.value || 0) / machines.length * 100).toFixed(0) : 0}%
+              </div>
+            </div>
+          </div>
+
+          {/* Top Customers dengan Warranty Breakdown */}
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1 min-h-0">
+            {topCustomers.slice(0, 3).map((customer, idx) => {
+              const percentage = machines.length > 0 ? (customer.value / machines.length * 100) : 0;
+              
+              // Calculate warranty breakdown for this customer
+              const customerWarrantyBreakdown = machines.filter(m => (m.customer || 'Unknown') === customer.name).reduce((acc, m) => {
+                if (m.machine_status === 'On Warranty' || m.machine_status === 'In Warranty') {
+                  acc.onWarranty++;
+                } else {
+                  acc.outOfWarranty++;
+                }
+                return acc;
+              }, { onWarranty: 0, outOfWarranty: 0 });
+              
+              const warrantyPercentage = customer.value > 0 ? (customerWarrantyBreakdown.onWarranty / customer.value * 100) : 0;
+              
+              return (
+                <div key={idx} className="bg-slate-800/30 rounded-lg p-3 border border-slate-700/50">
+                  {/* Customer Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${
+                        idx === 0 ? 'bg-cyan-500/20 text-cyan-400' :
+                        idx === 1 ? 'bg-cyan-600/20 text-cyan-400' :
+                        'bg-cyan-700/20 text-cyan-400'
+                      }`}>
+                        #{idx + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-slate-200 truncate" title={customer.name}>{customer.name}</div>
+                        <div className="text-xs text-slate-400">{customer.value} unit • {percentage.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="w-full h-2 bg-slate-700/50 rounded-full overflow-hidden mb-2">
+                    <div 
+                      className={`h-full transition-all duration-500 ${
+                        idx === 0 ? 'bg-gradient-to-r from-cyan-400 to-cyan-500' :
+                        idx === 1 ? 'bg-gradient-to-r from-cyan-500 to-cyan-600' :
+                        'bg-gradient-to-r from-cyan-600 to-cyan-700'
+                      }`}
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                  
+                  {/* Warranty Breakdown */}
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                      <span className="text-slate-400">On: </span>
+                      <span className="text-green-400 font-semibold">{customerWarrantyBreakdown.onWarranty}</span>
+                      <span className="text-slate-500">({warrantyPercentage.toFixed(0)}%)</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                      <span className="text-slate-400">Out: </span>
+                      <span className="text-red-400 font-semibold">{customerWarrantyBreakdown.outOfWarranty}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom Insight */}
+          <div className="mt-3 pt-3 border-t border-slate-700/50 flex-shrink-0">
+            <div className="text-xs text-slate-400">
+              💡 <span className="text-slate-300 font-semibold">{topEngineersData.length} top engineers analyzed</span> • {topCustomers[0]?.name || 'Tidak ada data'} mendominasi dengan {machines.length > 0 ? ((topCustomers[0]?.value || 0) / machines.length * 100).toFixed(1) : 0}% dari total mesin
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
 
       {/* Monthly Activation & Machine Age Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
@@ -1708,7 +2451,7 @@ export default function Dashboard() {
               <p className={TEXT_STYLES.mutedSmall}>Trend aktivasi mesin bulanan</p>
             </div>
             <button 
-              onClick={() => setShowActivationModal(true)} 
+              onClick={() => startTransition(() => setShowActivationModal(true))} 
               className="text-slate-400 hover:text-blue-400 transition-colors p-2 rounded hover:bg-slate-700/50 bg-blue-600/20 hover:bg-blue-600/30"
               title="Lihat Insight Detail"
             >
@@ -1725,10 +2468,10 @@ export default function Dashboard() {
             <div className="flex items-center justify-center" style={{ height: '220px' }}>
               <div className="text-slate-500">Data aktivasi tidak tersedia</div>
             </div>
-          ) : (
-            <div style={{ height: '220px' }}>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={monthlyActivationData}>
+          ) : chartsReady ? (
+            <div style={{ height: '220px', minHeight: '220px', minWidth: '100px', position: 'relative', width: '100%', overflow: 'hidden' }}>
+              <ResponsiveContainer width="100%" height={220} minHeight={220} minWidth={100}>
+                <LineChart data={limitChartData(monthlyActivationData, 36)}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                   <XAxis dataKey="month" tick={{ fill: "#94a3b8", fontSize: 11 }} />
                   <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
@@ -1742,12 +2485,14 @@ export default function Dashboard() {
                     dataKey="count" 
                     stroke="#3b82f6" 
                     strokeWidth={3} 
-                    dot={false}
-                    isAnimationActive={false}
-                    animationDuration={0}
+                    {...OPTIMIZED_LINE_PROPS}
                   />
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center" style={{ height: '220px' }}>
+              <div className="text-slate-500">Loading chart...</div>
             </div>
           )}
         </div>
@@ -1769,21 +2514,27 @@ export default function Dashboard() {
               </svg>
             </button>
           </div>
-          <div style={{ height: '220px' }}>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={machineAgeData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                <XAxis dataKey="range" tick={{ fill: "#94a3b8", fontSize: 11 }} angle={-15} textAnchor="end" height={60} />
-                <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: "#1e293b", border: "2px solid #3b82f6", borderRadius: "8px", padding: "6px 10px" }}
-                  labelStyle={{ color: "#e2e8f0", fontSize: "11px", fontWeight: "bold" }}
-                  itemStyle={{ color: "#93c5fd", fontSize: "11px" }}
-                />
-                <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} isAnimationActive={false} animationDuration={0} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {chartsReady ? (
+            <div style={{ height: '220px', minHeight: '220px', minWidth: '100px', position: 'relative', width: '100%', overflow: 'hidden' }}>
+              <ResponsiveContainer width="100%" height={220} minHeight={220} minWidth={100}>
+                <BarChart data={limitChartData(machineAgeData, 20)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                  <XAxis dataKey="range" tick={{ fill: "#94a3b8", fontSize: 11 }} angle={-15} textAnchor="end" height={60} />
+                  <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: "#1e293b", border: "2px solid #3b82f6", borderRadius: "8px", padding: "6px 10px" }}
+                    labelStyle={{ color: "#e2e8f0", fontSize: "11px", fontWeight: "bold" }}
+                    itemStyle={{ color: "#93c5fd", fontSize: "11px" }}
+                  />
+                  <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} {...OPTIMIZED_BAR_PROPS} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center" style={{ height: '220px' }}>
+              <div className="text-slate-500">Loading chart...</div>
+            </div>
+          )}
         </div>
 
         {/* Installation Year Trend */}
@@ -1803,23 +2554,39 @@ export default function Dashboard() {
               </svg>
             </button>
           </div>
-          <div style={{ height: '220px' }}>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={installYearData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                <XAxis dataKey="year" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: "#1e293b", border: "2px solid #10b981", borderRadius: "8px", padding: "6px 10px" }}
-                  labelStyle={{ color: "#e2e8f0", fontSize: "11px", fontWeight: "bold" }}
-                  itemStyle={{ color: "#6ee7b7", fontSize: "11px" }}
-                />
-                <Line type="monotone" dataKey="count" stroke="#10b981" strokeWidth={3} dot={false} isAnimationActive={false} animationDuration={0} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {chartsReady ? (
+            <div style={{ height: '220px', minHeight: '220px', minWidth: '100px', position: 'relative', width: '100%', overflow: 'hidden' }}>
+              <ResponsiveContainer width="100%" height={220} minHeight={220} minWidth={100}>
+                <LineChart data={limitChartData(installYearData, 30)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                  <XAxis dataKey="year" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: "#1e293b", border: "2px solid #10b981", borderRadius: "8px", padding: "6px 10px" }}
+                    labelStyle={{ color: "#e2e8f0", fontSize: "11px", fontWeight: "bold" }}
+                    itemStyle={{ color: "#6ee7b7", fontSize: "11px" }}
+                  />
+                  <Line type="monotone" dataKey="count" stroke="#10b981" strokeWidth={3} {...OPTIMIZED_LINE_PROPS} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center" style={{ height: '220px' }}>
+              <div className="text-slate-500">Loading chart...</div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* ===== DECISION MODAL ===== */}
+      <Suspense fallback={null}>
+        {activeDecisionModal && (
+          <DecisionModal
+            card={activeDecisionModal}
+            onClose={() => setActiveDecisionModal(null)}
+          />
+        )}
+      </Suspense>
 
       {/* ===== MODAL FULLSCREEN ===== */}
       <Suspense fallback={<div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div>}>
@@ -1929,8 +2696,9 @@ export default function Dashboard() {
               {/* Detailed Chart */}
               <div className="bg-slate-900/50 p-3 sm:p-4 rounded-lg border border-slate-700">
                 <h3 className="text-sm sm:text-lg font-semibold text-slate-100 mb-3 sm:mb-4">📈 Trend Aktivasi Historis</h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={monthlyActivationData}>
+                <div style={{ minWidth: '100px', minHeight: '250px', position: 'relative', width: '100%', height: '250px', overflow: 'hidden' }}>
+                  <ResponsiveContainer width="100%" height={250} minHeight={250} minWidth={100}>
+                    <LineChart data={monthlyActivationData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                     <XAxis 
                       dataKey="month" 
@@ -1957,7 +2725,8 @@ export default function Dashboard() {
                       animationDuration={0}
                     />
                   </LineChart>
-                </ResponsiveContainer>
+                  </ResponsiveContainer>
+                </div>
               </div>
               
               {/* Key Insights */}
@@ -2071,7 +2840,7 @@ export default function Dashboard() {
                 </p>
               </div>
               <button
-                onClick={() => setShowExpiringSoonModal(false)}
+                onClick={() => startTransition(() => setShowExpiringSoonModal(false))}
                 className="text-slate-400 hover:text-white transition-colors p-1.5 sm:p-2 rounded hover:bg-slate-800 flex-shrink-0"
               >
                 <X size={18} className="sm:w-6 sm:h-6" />
@@ -2271,7 +3040,7 @@ export default function Dashboard() {
                             "font-bold",
                             (100 - warrantyPercentage) > 70 ? "text-red-400" : (100 - warrantyPercentage) > 50 ? "text-yellow-400" : "text-green-400"
                           )}>
-                            {(100 - warrantyPercentage) > 70 ? "Critical" : (100 - warrantyPercentage) > 50 ? "High" : "Normal"}
+                            {(100 - warrantyPercentage) > 70 ? "Critical" : (100 - warrantyPercentage) > 50 ? "High" : "Optimal"}
                           </span>
                         </div>
                       </div>
@@ -2299,16 +3068,18 @@ export default function Dashboard() {
               {/* Distribution Chart */}
               <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-200 mb-4">Distribusi Sisa Waktu Warranty</h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={Object.entries(warrantyInsights.timeRanges).map(([name, value]) => ({ name, value }))}>
+                <div style={{ minWidth: '100px', minHeight: '250px', position: 'relative', width: '100%', height: '250px', overflow: 'hidden' }}>
+                  <ResponsiveContainer width="100%" height={250} minHeight={250} minWidth={100}>
+                    <BarChart data={Object.entries(warrantyInsights.timeRanges).map(([name, value]) => ({ name, value }))}>
                     <XAxis dataKey="name" tick={{ fill: '#cbd5e1', fontSize: 11 }} />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #10b981', borderRadius: '8px' }}
                       labelStyle={{ color: '#e2e8f0' }}
                     />
                     <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} isAnimationActive={false} animationDuration={0} />
-                  </BarChart>
-                </ResponsiveContainer>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
               {/* Status Distribution */}
@@ -2538,7 +3309,7 @@ export default function Dashboard() {
                   <div className="flex flex-wrap gap-1.5 items-center mt-2.5 pt-2.5 border-t border-slate-700/50">
                     {machineListWarrantyFilter && (
                       <div className="flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">
-                        <span>⚠️ {machineListWarrantyFilter === "On Warranty" ? "Aktif" : "Expired"}</span>
+                        <span> {machineListWarrantyFilter === "On Warranty" ? "Aktif" : "Expired"}</span>
                         <button
                           onClick={() => {
                             setMachineListWarrantyFilter("");
@@ -2626,7 +3397,7 @@ export default function Dashboard() {
                             <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-300">{machine.customer || '-'}</td>
                             <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-300">{machine.region || '-'}</td>
                             <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-300">{machine.area_group || '-'}</td>
-                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-300">{machine.city || '-'}</td>
+                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-300">{machine.area_group || '-'}</td>
                             <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-300">{machine.machine_type || '-'}</td>
                             <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-center">
                               <span className={`inline-flex items-center px-2 py-1 text-xs rounded font-medium ${
@@ -2673,7 +3444,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setMachineListCurrentPage(prev => Math.max(1, prev - 1))}
+                      onClick={() => startTransition(() => setMachineListCurrentPage(prev => Math.max(1, prev - 1)))}
                       disabled={machineListCurrentPage === 1}
                       className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                       aria-label="Previous page"
@@ -2684,7 +3455,7 @@ export default function Dashboard() {
                       Halaman {machineListCurrentPage} dari {machineListTotalPages}
                     </span>
                     <button
-                      onClick={() => setMachineListCurrentPage(prev => Math.min(machineListTotalPages, prev + 1))}
+                      onClick={() => startTransition(() => setMachineListCurrentPage(prev => Math.min(machineListTotalPages, prev + 1)))}
                       disabled={machineListCurrentPage === machineListTotalPages}
                       className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                       aria-label="Next page"
@@ -2694,6 +3465,257 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Insight Modal */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6" style={{ zIndex: 9999 }}>
+          <div className="bg-slate-900 rounded-xl w-full max-w-6xl max-h-[90vh] flex flex-col border border-slate-700 shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b border-slate-700">
+              <div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <span>👑</span> Insight Detail Customer
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">
+                  Analisis lengkap distribusi {allCustomers.length} customer
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCustomerModal(false)}
+                className="text-slate-400 hover:text-white transition-colors p-2 rounded hover:bg-slate-800"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 p-6 overflow-y-auto space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                  <p className="text-slate-400 text-xs mb-1">Total Customer</p>
+                  <p className="text-2xl font-bold text-cyan-400">{allCustomers.length}</p>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                  <p className="text-slate-400 text-xs mb-1">Customer Terbesar</p>
+                  <p className="text-lg font-bold text-cyan-400 truncate" title={allCustomers[0]?.[0]}>{allCustomers[0]?.[0] || 'N/A'}</p>
+                  <p className="text-xs text-slate-500 mt-1">{allCustomers[0]?.[1] || 0} unit</p>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-cyan-500/30">
+                  <p className="text-slate-400 text-xs mb-1">Dominasi Terbesar</p>
+                  <p className="text-2xl font-bold text-cyan-400">
+                    {machines.length > 0 ? ((allCustomers[0]?.[1] || 0) / machines.length * 100).toFixed(1) : 0}%
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">{allCustomers[0]?.[0] || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                  <p className="text-slate-400 text-xs mb-1">Total Mesin</p>
+                  <p className="text-2xl font-bold text-cyan-400">{machines.length}</p>
+                </div>
+              </div>
+
+              {/* Distribution Chart */}
+              <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
+                <h3 className="text-lg font-semibold text-slate-200 mb-4">Distribusi Customer (Top 10)</h3>
+                <div style={{ minWidth: '100px', minHeight: '300px', position: 'relative', width: '100%', height: '300px', overflow: 'hidden' }}>
+                  <ResponsiveContainer width="100%" height={300} minHeight={300} minWidth={100}>
+                    <BarChart data={customersChartData}>
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fill: '#cbd5e1', fontSize: 10 }} 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #06b6d4', borderRadius: '8px' }}
+                      labelStyle={{ color: '#e2e8f0' }}
+                    />
+                    <Bar dataKey="value" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Detailed Table - All Customers */}
+              <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
+                <h3 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                  <span>📋</span> Detail Semua Customer
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-700">
+                        <th className="text-left p-3 text-slate-400">#</th>
+                        <th className="text-left p-3 text-slate-400">Customer</th>
+                        <th className="text-right p-3 text-slate-400">Jumlah</th>
+                        <th className="text-right p-3 text-slate-400">Persentase</th>
+                        <th className="text-right p-3 text-slate-400">On Warranty</th>
+                        <th className="text-right p-3 text-slate-400">Out Warranty</th>
+                        <th className="text-center p-3 text-slate-400">Warranty %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allCustomers.map(([customer, count], idx) => {
+                        const percentage = machines.length > 0 ? (count / machines.length * 100) : 0;
+                        
+                        // Calculate warranty breakdown for this customer
+                        const customerWarrantyBreakdown = machines.filter(m => (m.customer || 'Unknown') === customer).reduce((acc, m) => {
+                          if (m.machine_status === 'On Warranty' || m.machine_status === 'In Warranty') {
+                            acc.onWarranty++;
+                          } else {
+                            acc.outOfWarranty++;
+                          }
+                          return acc;
+                        }, { onWarranty: 0, outOfWarranty: 0 });
+                        
+                        const warrantyPercentage = count > 0 ? (customerWarrantyBreakdown.onWarranty / count * 100) : 0;
+                        
+                        return (
+                          <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                            <td className="p-3 text-slate-300 font-bold">
+                              {idx < 3 ? (
+                                <span className={`
+                                  ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-400' : 'text-orange-400'}
+                                `}>
+                                  #{idx + 1}
+                                </span>
+                              ) : (
+                                <span className="text-slate-500">#{idx + 1}</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-slate-200 font-semibold">{customer}</td>
+                            <td className="p-3 text-right text-slate-200 font-bold">{count}</td>
+                            <td className="p-3 text-right">
+                              <span className="text-cyan-400 font-semibold">{percentage.toFixed(1)}%</span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <span className="text-green-400 font-semibold">{customerWarrantyBreakdown.onWarranty}</span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <span className="text-red-400 font-semibold">{customerWarrantyBreakdown.outOfWarranty}</span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="flex-1 max-w-[100px] h-2 bg-slate-700 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-green-500"
+                                    style={{ width: `${warrantyPercentage}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-xs text-slate-400 w-12 text-right">{warrantyPercentage.toFixed(0)}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Key Insights */}
+              <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
+                <h3 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                  <span>💡</span> Key Insights
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-3">
+                    <span className="text-cyan-400 font-bold">•</span>
+                    <p className="text-slate-300">
+                      <span className="font-semibold text-white">{allCustomers[0]?.[0]}</span> adalah customer terbesar dengan <span className="font-semibold text-cyan-400">{allCustomers[0]?.[1]} unit</span> ({machines.length > 0 ? ((allCustomers[0]?.[1] || 0) / machines.length * 100).toFixed(1) : 0}% dari total)
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-cyan-400 font-bold">•</span>
+                    <p className="text-slate-300">
+                      Terdapat <span className="font-semibold text-white">{allCustomers.length} customer</span> yang menggunakan mesin
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-cyan-400 font-bold">•</span>
+                    <p className="text-slate-300">
+                      Top 3 customer ({allCustomers.slice(0, 3).map(([customer]) => customer).join(', ')}) mencakup <span className="font-semibold text-cyan-400">{machines.length > 0 ? ((allCustomers.slice(0, 3).reduce((sum, [, count]) => sum + count, 0) / machines.length) * 100).toFixed(1) : 0}%</span> dari total mesin
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Insight Modal for KPI Cards */}
+      {insightModal && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => startTransition(() => setInsightModal(null))}
+        >
+          <div 
+            className={cn(
+              "max-w-4xl w-full max-h-[90vh] rounded-xl shadow-2xl overflow-hidden",
+              isDark ? "bg-slate-800 border border-slate-700" : "bg-white border-gray-200"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className={cn(
+              "flex items-center justify-between p-6 border-b",
+              isDark ? "border-slate-700 bg-slate-900/50" : "border-gray-200 bg-gray-50"
+            )}>
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "p-3 rounded-lg",
+                  isDark ? "bg-blue-500/20" : "bg-blue-100"
+                )}>
+                  <svg className={cn("w-6 h-6", isDark ? "text-blue-400" : "text-blue-600")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className={cn("text-xl font-bold", isDark ? "text-slate-200" : "text-gray-900")}>
+                    {insightModal === 'total-engineers' && 'Total Engineers Insight'}
+                    {insightModal === 'avg-resolution-time' && 'Average Resolution Time Insight'}
+                    {insightModal === 'overall-rate' && 'Overall Training Rate Insight'}
+                  </h2>
+                  <p className={cn("text-sm mt-1", isDark ? "text-slate-400" : "text-gray-600")}>
+                    Analisis detail dan rekomendasi berdasarkan data engineer
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => startTransition(() => setInsightModal(null))}
+                className={cn(
+                  "p-2 rounded-lg transition-colors",
+                  isDark
+                    ? "hover:bg-slate-700 text-slate-400 hover:text-slate-200"
+                    : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                )}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className={cn(
+              "p-6 overflow-y-auto max-h-[calc(90vh-120px)]",
+              isDark ? "scrollbar-thumb-slate-600 scrollbar-track-slate-800/50" : "scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+            )}>
+              <div className={cn(
+                "p-4 rounded-lg border",
+                isDark ? "bg-blue-500/10 border-blue-400/30" : "bg-blue-50 border-blue-200"
+              )}>
+                <p className={cn("text-sm", isDark ? "text-slate-300" : "text-gray-700")}>
+                  💡 Untuk melihat insight detail lengkap, silakan kunjungi halaman <strong>Engineers</strong>.
+                </p>
+                <p className={cn("text-xs mt-2", isDark ? "text-slate-400" : "text-gray-600")}>
+                  Dashboard menampilkan ringkasan KPI. Insight mendalam tersedia di halaman dedicated.
+                </p>
+              </div>
             </div>
           </div>
         </div>

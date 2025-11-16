@@ -1,0 +1,91 @@
+/* src/styles/components/kpi-cards.css */
+/* KPI Cards specific styles */
+
+/* Remove borders from KPI cards in light mode */
+html.light-theme .engineer-kpi-card,
+html.light-theme #engineer-training-kpi-cards > div,
+html.light-theme #engineer-training-kpi-cards > div.bg-gradient-to-br,
+html.light-theme #engineer-training-kpi-cards [class*="bg-gradient-to-br"],
+html.light-theme #engineer-training-kpi-cards [class*="bg-gradient"],
+html.light-theme #engineer-training-kpi-cards div[class*="from-blue"],
+html.light-theme #engineer-training-kpi-cards div[class*="from-orange"],
+html.light-theme #engineer-training-kpi-cards div[class*="from-purple"] {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+}
+
+/* Gradient text fixes for light mode */
+html.light-theme [class*="from-blue-400"][class*="to-indigo-400"].bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-blue-400.to-indigo-400.bg-clip-text {
+  background: linear-gradient(to right, #2563eb 0%, #4f46e5 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+html.light-theme [class*="from-blue-400"][class*="to-cyan-400"].bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-blue-400.to-cyan-400.bg-clip-text {
+  background: linear-gradient(to right, #2563eb 0%, #0891b2 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+html.light-theme [class*="from-cyan-400"][class*="to-teal-400"].bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-cyan-400.to-teal-400.bg-clip-text {
+  background: linear-gradient(to right, #0891b2 0%, #0d9488 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+html.light-theme [class*="from-purple-400"][class*="to-indigo-400"].bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-purple-400.to-indigo-400.bg-clip-text {
+  background: linear-gradient(to right, #9333ea 0%, #4f46e5 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+html.light-theme [class*="from-blue-300"][class*="to-purple-300"].bg-clip-text,
+html.light-theme [class*="from-blue-400"][class*="to-purple-400"].bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-blue-300.to-purple-300.bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-blue-400.to-purple-400.bg-clip-text {
+  background: linear-gradient(to right, #2563eb 0%, #9333ea 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+/* Gradient backgrounds in light mode */
+html.light-theme .bg-gradient-to-br,
+html.light-theme [class*="bg-gradient"] {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light-theme .bg-gradient-to-br .text-sm,
+html.light-theme .bg-gradient-to-br .text-2xl,
+html.light-theme .bg-gradient-to-br .text-xs,
+html.light-theme .bg-gradient-to-br p,
+html.light-theme .bg-gradient-to-br h3 {
+  color: #1e293b !important;
+}
+
+html.light-theme .bg-gradient-to-br button {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #1e293b !important;
+}
+
+html.light-theme .bg-gradient-to-br button:hover {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+

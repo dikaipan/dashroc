@@ -114,3 +114,49 @@ export const getAxisConfig = (isFullscreen = false, isDark = true) => ({
   stroke: isDark ? '#64748b' : '#cbd5e1',
   strokeWidth: 1.5,
 });
+
+/**
+ * Optimized chart props - Disable animations for better performance
+ * Use these props on all chart components (Bar, Line, Pie, Radar, etc.)
+ */
+export const OPTIMIZED_CHART_PROPS = {
+  // Disable all animations for better performance
+  isAnimationActive: false,
+  animationDuration: 0,
+  // Optimize rendering
+  syncId: undefined, // Don't sync charts unnecessarily
+};
+
+/**
+ * Optimized Bar props
+ */
+export const OPTIMIZED_BAR_PROPS = {
+  ...OPTIMIZED_CHART_PROPS,
+  radius: [4, 4, 0, 0],
+};
+
+/**
+ * Optimized Line props
+ */
+export const OPTIMIZED_LINE_PROPS = {
+  ...OPTIMIZED_CHART_PROPS,
+  dot: false, // Disable dots for better performance
+  strokeWidth: 2,
+};
+
+/**
+ * Optimized Pie props
+ */
+export const OPTIMIZED_PIE_PROPS = {
+  ...OPTIMIZED_CHART_PROPS,
+  // Disable labelLine for better performance with many slices
+  labelLine: false,
+};
+
+/**
+ * Optimized Radar props
+ */
+export const OPTIMIZED_RADAR_PROPS = {
+  ...OPTIMIZED_CHART_PROPS,
+  dot: false,
+};

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
@@ -28,7 +28,8 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (username, password) => {
+  // Memoize login function to prevent re-renders
+  const login = useCallback(async (username, password) => {
     try {
       if (username && password) {
         const userData = {
@@ -50,21 +51,23 @@ export const AuthProvider = ({ children }) => {
       toast.error(error.message || 'Login failed');
       return { success: false, error: error.message };
     }
-  };
+  }, []);
 
-  const logout = () => {
+  // Memoize logout function to prevent re-renders
+  const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('user');
     toast.success('Logged out successfully');
-  };
+  }, []);
 
-  const value = {
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     user,
     loading,
     isAuthenticated: !!user,
     login,
     logout
-  };
+  }), [user, loading, login, logout]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -72,5 +75,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-export default AuthContext;

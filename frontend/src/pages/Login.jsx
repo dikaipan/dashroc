@@ -35,6 +35,7 @@ export default function Login() {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Masukan User Name"
+              autoComplete="username"
               required
             />
           </div>
@@ -50,6 +51,7 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Masukan password"
+              autoComplete="current-password"
               required
             />
           </div>

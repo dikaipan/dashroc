@@ -1,0 +1,93 @@
+/* src/styles/themes.css */
+/* Theme variables and theme-specific styles */
+
+:root {
+  --bg-1: #071029;
+  --bg-2: linear-gradient(180deg, #071029 0%, #0b1830 100%);
+  --card-bg: rgba(255, 255, 255, 0.04);
+  --muted: rgba(255, 255, 255, 0.6);
+  --accent: #60a5fa;
+  --accent-2: #a78bfa;
+  --accent-3: #34d399;
+  --accent-gradient: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #34d399 100%);
+  --accent-glow: rgba(96, 165, 250, 0.3);
+  --glass: rgba(255, 255, 255, 0.03);
+  --shadow: 0 8px 30px rgba(2, 6, 23, 0.6);
+  --radius: 14px;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color-scheme: dark;
+  letter-spacing: -0.01em;
+  line-height: 1.6;
+}
+
+/* Light Theme Variables */
+html.light-theme,
+.light-theme {
+  --bg-1: #f8fafc !important;
+  --bg-2: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  --card-bg: rgba(0, 0, 0, 0.02) !important;
+  --muted: #1e293b !important;
+  --text: #0f172a !important;
+  --accent: #2563eb !important;
+  --accent-2: #7c3aed !important;
+  --accent-3: #059669 !important;
+  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #059669 100%) !important;
+  --accent-glow: rgba(37, 99, 235, 0.2) !important;
+  --glass: rgba(0, 0, 0, 0.03) !important;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.1) !important;
+  --radius: 14px !important;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial !important;
+  color-scheme: light !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.6 !important;
+}
+
+/* Light theme base styles */
+html.light-theme,
+html.light-theme body {
+  background: #f8fafc !important;
+  background-image: none !important;
+  color: #1e293b !important;
+}
+
+/* Force dark text in light mode for most elements */
+html.light-theme div,
+html.light-theme span,
+html.light-theme p,
+html.light-theme li,
+html.light-theme td,
+html.light-theme th,
+html.light-theme label,
+html.light-theme small,
+html.light-theme h1,
+html.light-theme h2,
+html.light-theme h3,
+html.light-theme h4,
+html.light-theme h5,
+html.light-theme h6 {
+  color: #0f172a !important;
+}
+
+/* Preserve colored text elements */
+html.light-theme [class*="text-blue"],
+html.light-theme [class*="text-green"],
+html.light-theme [class*="text-red"],
+html.light-theme [class*="text-yellow"],
+html.light-theme [class*="text-purple"],
+html.light-theme [class*="text-cyan"],
+html.light-theme [class*="text-pink"],
+html.light-theme [class*="text-orange"],
+html.light-theme [class*="text-indigo"],
+html.light-theme button[class*="text-"],
+html.light-theme a[class*="text-"] {
+  color: inherit !important;
+}
+
+/* Override slate colors in light mode */
+html.light-theme .text-slate-100,
+html.light-theme .text-slate-200,
+html.light-theme .text-slate-300,
+html.light-theme .text-white {
+  color: #0f172a !important;
+}
+

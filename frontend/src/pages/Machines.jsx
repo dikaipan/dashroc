@@ -24,15 +24,16 @@ import { SearchFilter, CustomAlert, CustomConfirm } from "../components/common";
 import { getKPICard, TEXT_STYLES, BUTTON_STYLES, cn } from '../constants/styles';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
 import InlineLoadingSpinner from '../components/common/InlineLoadingSpinner';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function Machines() {
+  const { isDark } = useTheme();
   const { rows: machines, loading } = useMachineData();
   const { create, update, remove, bulkDelete, loading: crudLoading } = useCrud({
     endpoint: '/api/machines',
     primaryKey: 'wsid',
     eventName: 'machineDataChanged'
   });
-  const { handleExport, isExporting } = useMachineExport();
   const [searchTerm, setSearchTerm] = useState("");
   const [customerFilter, setCustomerFilter] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
@@ -104,6 +105,16 @@ export default function Machines() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Use custom hooks for business logic (after state and effects)
+  const filteredMachines = useMachineFilters(machines, { 
+    debouncedSearch, 
+    customerFilter, 
+    regionFilter, 
+    warrantyFilter
+  });
+  
+  const { handleExport, isExporting } = useMachineExport(() => filteredMachines);
 
   // Reset page when filter changes
   useEffect(() => {
@@ -285,14 +296,6 @@ export default function Machines() {
     
     return groups;
   }, [allMachineFields]);
-
-  // Use custom hooks for business logic
-  const filteredMachines = useMachineFilters(machines, { 
-    debouncedSearch, 
-    customerFilter, 
-    regionFilter, 
-    warrantyFilter 
-  });
   
   // Pagination
   const totalPages = Math.ceil(filteredMachines.length / itemsPerPage);
@@ -815,7 +818,12 @@ export default function Machines() {
             <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={() => setShowWarrantyInsightModal(true)}
-                className="text-slate-400 hover:text-green-400 transition-colors p-2 rounded hover:bg-slate-700/50 bg-green-600/20 hover:bg-green-600/30"
+                className={cn(
+                  "transition-colors p-2 rounded",
+                  isDark 
+                    ? "text-slate-400 hover:text-green-400 hover:bg-slate-700/50 bg-green-600/20 hover:bg-green-600/30"
+                    : "text-gray-600 hover:text-green-600 hover:bg-gray-200 bg-green-100 hover:bg-green-200"
+                )}
                 title="Lihat Insight Detail"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -827,7 +835,10 @@ export default function Machines() {
           
           {/* Progress Bar dengan Breakdown */}
           <div className="mt-4 flex-shrink-0">
-            <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden relative">
+            <div className={cn(
+              "w-full h-4 rounded-full overflow-hidden relative",
+              isDark ? "bg-slate-700" : "bg-gray-300"
+            )}>
               <div 
                 className="h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-500"
                 style={{ width: `${warrantyPercentage}%` }}
@@ -841,26 +852,41 @@ export default function Machines() {
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <div className="w-3 h-3 rounded-full bg-green-400 flex-shrink-0"></div>
                 <span className="text-green-400 font-semibold truncate">{onWarranty.toLocaleString()} aktif</span>
-                <span className="text-slate-500 flex-shrink-0">({warrantyPercentage.toFixed(1)}%)</span>
+                <span className={cn(
+                  "flex-shrink-0",
+                  isDark ? "text-slate-500" : "text-gray-600"
+                )}>({warrantyPercentage.toFixed(1)}%)</span>
               </div>
               <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
                 <div className="w-3 h-3 rounded-full bg-red-400 flex-shrink-0"></div>
                 <span className="text-red-400 font-semibold truncate">{outOfWarranty.toLocaleString()} expired</span>
-                <span className="text-slate-500 flex-shrink-0">({(100 - warrantyPercentage).toFixed(1)}%)</span>
+                <span className={cn(
+                  "flex-shrink-0",
+                  isDark ? "text-slate-500" : "text-gray-600"
+                )}>({(100 - warrantyPercentage).toFixed(1)}%)</span>
               </div>
             </div>
           </div>
 
           {/* Status Breakdown dengan Visualisasi */}
           {warrantyRemaining && warrantyRemaining.avgDays > 0 && (
-            <div className="mt-4 pt-4 border-t border-slate-700/50 flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className={cn(
+              "mt-4 pt-4 border-t flex-1 flex flex-col min-h-0 overflow-hidden",
+              isDark ? "border-slate-700/50" : "border-gray-300"
+            )}>
               {/* Grid Layout untuk Status */}
               <div className="grid grid-cols-2 gap-3 mb-4 flex-shrink-0">
                 {/* Rata-rata Sisa */}
-                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 min-w-0">
+                <div className={cn(
+                  "rounded-lg p-3 border min-w-0",
+                  isDark ? "bg-slate-800/50 border-slate-700/50" : "bg-gray-100 border-gray-300"
+                )}>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-base flex-shrink-0">⏱️</span>
-                    <span className="text-xs text-slate-400 truncate">Rata-rata Sisa</span>
+                    <span className={cn(
+                      "text-xs truncate",
+                      isDark ? "text-slate-400" : "text-gray-600"
+                    )}>Rata-rata Sisa</span>
                   </div>
                   <div className="text-base font-bold text-green-400 truncate">
                     {warrantyRemaining.avgMonths > 0 
@@ -871,10 +897,16 @@ export default function Machines() {
                 </div>
 
                 {/* Total Aktif */}
-                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 min-w-0">
+                <div className={cn(
+                  "rounded-lg p-3 border min-w-0",
+                  isDark ? "bg-slate-800/50 border-slate-700/50" : "bg-gray-100 border-gray-300"
+                )}>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-base flex-shrink-0">✅</span>
-                    <span className="text-xs text-slate-400 truncate">Total Aktif</span>
+                    <span className={cn(
+                      "text-xs truncate",
+                      isDark ? "text-slate-400" : "text-gray-600"
+                    )}>Total Aktif</span>
                   </div>
                   <div className="text-base font-bold text-green-400 truncate">
                     {onWarranty.toLocaleString()}
@@ -886,7 +918,10 @@ export default function Machines() {
               {warrantyInsights && warrantyInsights.expiringSoonMachines && warrantyInsights.expiringSoonMachines.length > 0 && (
                 <div className="mb-3 flex-shrink-0 min-h-0">
                   <div className="flex items-center justify-between mb-2.5 px-0.5">
-                    <div className="text-xs text-slate-400 font-semibold flex items-center gap-1.5 min-w-0">
+                    <div className={cn(
+                      "text-xs font-semibold flex items-center gap-1.5 min-w-0",
+                      isDark ? "text-slate-400" : "text-gray-600"
+                    )}>
                       <span className="flex-shrink-0 text-sm">⚠️</span>
                       <span className="truncate">Expiring Soon</span>
                     </div>
@@ -902,27 +937,56 @@ export default function Machines() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="border-b border-slate-700/50">
-                          <th className="text-center py-2 px-2 text-slate-400 font-semibold text-[10px] w-8">#</th>
-                          <th className="text-left py-2 px-2 text-slate-400 font-semibold text-[10px] min-w-[70px]">WSID</th>
-                          <th className="text-left py-2 px-2 text-slate-400 font-semibold text-[10px] min-w-[60px]">Area</th>
-                          <th className="text-right py-2 px-2 text-slate-400 font-semibold text-[10px] min-w-[50px]">Sisa</th>
+                        <tr className={cn(
+                          "border-b",
+                          isDark ? "border-slate-700/50" : "border-gray-300"
+                        )}>
+                          <th className={cn(
+                            "text-center py-2 px-2 font-semibold text-[10px] w-8",
+                            isDark ? "text-slate-400" : "text-gray-600"
+                          )}>#</th>
+                          <th className={cn(
+                            "text-left py-2 px-2 font-semibold text-[10px] min-w-[70px]",
+                            isDark ? "text-slate-400" : "text-gray-600"
+                          )}>WSID</th>
+                          <th className={cn(
+                            "text-left py-2 px-2 font-semibold text-[10px] min-w-[60px]",
+                            isDark ? "text-slate-400" : "text-gray-600"
+                          )}>Area</th>
+                          <th className={cn(
+                            "text-right py-2 px-2 font-semibold text-[10px] min-w-[50px]",
+                            isDark ? "text-slate-400" : "text-gray-600"
+                          )}>Sisa</th>
                         </tr>
                       </thead>
                       <tbody>
                         {warrantyInsights.expiringSoonMachines.slice(0, 3).map((machine, idx) => (
                           <tr 
                             key={idx} 
-                            className="border-b border-slate-700/30 hover:bg-slate-800/50 transition-colors last:border-b-0"
+                            className={cn(
+                              "border-b transition-colors last:border-b-0",
+                              isDark 
+                                ? "border-slate-700/30 hover:bg-slate-800/50" 
+                                : "border-gray-300 hover:bg-gray-100"
+                            )}
                           >
-                            <td className="py-2 px-2 text-slate-300 font-mono text-center text-[11px]">{idx + 1}</td>
+                            <td className={cn(
+                              "py-2 px-2 font-mono text-center text-[11px]",
+                              isDark ? "text-slate-300" : "text-gray-700"
+                            )}>{idx + 1}</td>
                             <td className="py-2 px-2 min-w-0">
-                              <div className="text-slate-200 font-mono text-[11px] truncate" title={machine.wsid || 'Unknown'}>
+                              <div className={cn(
+                                "font-mono text-[11px] truncate",
+                                isDark ? "text-slate-200" : "text-gray-900"
+                              )} title={machine.wsid || 'Unknown'}>
                                 {machine.wsid || 'Unknown'}
                               </div>
                             </td>
                             <td className="py-2 px-2 min-w-0">
-                              <div className="text-slate-400 text-[11px] truncate" title={machine.area_group || 'Unknown'}>
+                              <div className={cn(
+                                "text-[11px] truncate",
+                                isDark ? "text-slate-400" : "text-gray-600"
+                              )} title={machine.area_group || 'Unknown'}>
                                 {machine.area_group || 'Unknown'}
                               </div>
                             </td>
@@ -943,13 +1007,25 @@ export default function Machines() {
               )}
 
               {/* Quick Stats */}
-              <div className="mt-auto pt-3 border-t border-slate-700/50 flex-shrink-0">
+              <div className={cn(
+                "mt-auto pt-3 border-t flex-shrink-0",
+                isDark ? "border-slate-700/50" : "border-gray-300"
+              )}>
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="text-slate-400 min-w-0">
+                  <div className={cn(
+                    "min-w-0",
+                    isDark ? "text-slate-400" : "text-gray-600"
+                  )}>
                     <div className="truncate">Total Mesin:</div>
-                    <div className="text-slate-200 font-semibold truncate">{filteredMachines.length.toLocaleString()}</div>
+                    <div className={cn(
+                      "font-semibold truncate",
+                      isDark ? "text-slate-200" : "text-gray-900"
+                    )}>{filteredMachines.length.toLocaleString()}</div>
                   </div>
-                  <div className="text-slate-400 text-right min-w-0">
+                  <div className={cn(
+                    "text-right min-w-0",
+                    isDark ? "text-slate-400" : "text-gray-600"
+                  )}>
                     <div className="truncate">Coverage:</div>
                     <div className="text-green-400 font-semibold truncate">{warrantyPercentage.toFixed(1)}%</div>
                   </div>
@@ -971,7 +1047,12 @@ export default function Machines() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowMachineTypesModal(true)}
-                className="text-slate-400 hover:text-purple-400 transition-colors p-2 rounded hover:bg-slate-700/50 bg-purple-600/20 hover:bg-purple-600/30"
+                className={cn(
+                  "transition-colors p-2 rounded",
+                  isDark 
+                    ? "text-slate-400 hover:text-purple-400 hover:bg-slate-700/50 bg-purple-600/20 hover:bg-purple-600/30"
+                    : "text-gray-600 hover:text-purple-600 hover:bg-gray-200 bg-purple-100 hover:bg-purple-200"
+                )}
                 title="Lihat Insight Detail"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -984,14 +1065,26 @@ export default function Machines() {
 
           {/* Key Stats Grid */}
           <div className="grid grid-cols-2 gap-2 mb-3 flex-shrink-0">
-            <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50">
-              <div className="text-xs text-slate-400">Total Tipe</div>
+            <div className={cn(
+              "rounded-lg p-2 border",
+              isDark ? "bg-slate-800/50 border-slate-700/50" : "bg-gray-100 border-gray-300"
+            )}>
+              <div className={cn(
+                "text-xs",
+                isDark ? "text-slate-400" : "text-gray-600"
+              )}>Total Tipe</div>
               <div className="text-lg font-bold text-purple-400">
                 {Object.keys(filteredMachines.reduce((acc, m) => { acc[m.machine_type || 'Unknown'] = true; return acc; }, {})).length}
               </div>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-2 border border-slate-700/50">
-              <div className="text-xs text-slate-400">Dominasi</div>
+            <div className={cn(
+              "rounded-lg p-2 border",
+              isDark ? "bg-slate-800/50 border-slate-700/50" : "bg-gray-100 border-gray-300"
+            )}>
+              <div className={cn(
+                "text-xs",
+                isDark ? "text-slate-400" : "text-gray-600"
+              )}>Dominasi</div>
               <div className="text-lg font-bold text-purple-400">
                 {filteredMachines.length > 0 ? ((machineTypes[0]?.[1] || 0) / filteredMachines.length * 100).toFixed(0) : 0}%
               </div>
@@ -1460,7 +1553,7 @@ export default function Machines() {
                     <span className="text-xs sm:text-sm">+</span> <span className="hidden sm:inline">Tambah</span> <span className="sm:hidden">+</span>
                   </button>
                   <button
-                    onClick={() => handleExport(filteredMachines, null, 'mesin')}
+                    onClick={handleExport}
                     disabled={filteredMachines.length === 0 || isExporting}
                     className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1 sm:gap-1.5"
                     title={filteredMachines.length === 0 ? "Tidak ada data untuk diekspor" : "Export data ke CSV"}
@@ -2388,16 +2481,18 @@ export default function Machines() {
               {warrantyTimeRangesChartData.length > 0 && (
                 <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
                   <h3 className="text-lg font-semibold text-slate-200 mb-4">Distribusi Sisa Waktu Warranty</h3>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={warrantyTimeRangesChartData}>
+                  <div style={{ minWidth: '100px', position: 'relative', width: '100%', display: 'block' }}>
+                    <ResponsiveContainer width="100%" height={250} minHeight={250} minWidth={100}>
+                      <BarChart data={warrantyTimeRangesChartData}>
                       <XAxis dataKey="name" tick={{ fill: '#cbd5e1', fontSize: 11 }} />
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #10b981', borderRadius: '8px' }}
                         labelStyle={{ color: '#e2e8f0' }}
                       />
                       <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               )}
 
@@ -2538,22 +2633,24 @@ export default function Machines() {
               {/* Distribution Chart */}
               <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-200 mb-4">Distribusi Tipe Mesin (Top 10)</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={machineTypesChartData}>
-                    <XAxis 
-                      dataKey="name" 
-                      tick={{ fill: '#cbd5e1', fontSize: 10 }} 
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                    />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #a855f7', borderRadius: '8px' }}
-                      labelStyle={{ color: '#e2e8f0' }}
-                    />
-                    <Bar dataKey="value" fill="#a855f7" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div style={{ minWidth: '100px', position: 'relative', width: '100%', display: 'block' }}>
+                  <ResponsiveContainer width="100%" height={300} minHeight={300} minWidth={100}>
+                    <BarChart data={machineTypesChartData}>
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ fill: '#cbd5e1', fontSize: 10 }} 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                      />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #a855f7', borderRadius: '8px' }}
+                        labelStyle={{ color: '#e2e8f0' }}
+                      />
+                      <Bar dataKey="value" fill="#a855f7" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
               {/* Detailed Table - All Types */}
@@ -2715,22 +2812,24 @@ export default function Machines() {
               {/* Distribution Chart */}
               <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-200 mb-4">Distribusi Area Group (Top 10)</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={areaGroupsChartData}>
-                    <XAxis 
-                      dataKey="name" 
-                      tick={{ fill: '#cbd5e1', fontSize: 10 }} 
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                    />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #a855f7', borderRadius: '8px' }}
-                      labelStyle={{ color: '#e2e8f0' }}
-                    />
-                    <Bar dataKey="value" fill="#a855f7" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div style={{ minWidth: '100px', position: 'relative', width: '100%', display: 'block' }}>
+                  <ResponsiveContainer width="100%" height={300} minHeight={300} minWidth={100}>
+                    <BarChart data={areaGroupsChartData}>
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ fill: '#cbd5e1', fontSize: 10 }} 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                      />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #a855f7', borderRadius: '8px' }}
+                        labelStyle={{ color: '#e2e8f0' }}
+                      />
+                      <Bar dataKey="value" fill="#a855f7" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
               {/* Detailed Table - All Area Groups */}
@@ -2900,22 +2999,24 @@ export default function Machines() {
               {/* Distribution Chart */}
               <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-200 mb-4">Distribusi Customer (Top 10)</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={customersChartData}>
-                    <XAxis 
-                      dataKey="name" 
-                      tick={{ fill: '#cbd5e1', fontSize: 10 }} 
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                    />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #06b6d4', borderRadius: '8px' }}
-                      labelStyle={{ color: '#e2e8f0' }}
-                    />
-                    <Bar dataKey="value" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div style={{ minWidth: '100px', position: 'relative', width: '100%', display: 'block' }}>
+                  <ResponsiveContainer width="100%" height={300} minHeight={300} minWidth={100}>
+                    <BarChart data={customersChartData}>
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ fill: '#cbd5e1', fontSize: 10 }} 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                      />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #06b6d4', borderRadius: '8px' }}
+                        labelStyle={{ color: '#e2e8f0' }}
+                      />
+                      <Bar dataKey="value" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
               {/* Detailed Table - All Customers */}

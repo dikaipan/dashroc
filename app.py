@@ -26,6 +26,45 @@ def create_app() -> Flask:
     # Register all API routes FIRST (with /api prefix)
     register_routes(app)
     
+    # Serve documentation HTML file
+    @app.route("/docs")
+    @app.route("/panduan")
+    @app.route("/documentation")
+    def serve_documentation() -> Response:
+        """
+        Serve documentation HTML file
+        
+        Returns:
+            Documentation HTML file response
+        """
+        docs_path = os.path.join(os.path.dirname(__file__), "PANDUAN_PENGGUNAAN_ROC_DASHBOARD.html")
+        if os.path.exists(docs_path):
+            return send_from_directory(os.path.dirname(__file__), "PANDUAN_PENGGUNAAN_ROC_DASHBOARD.html", mimetype='text/html')
+        else:
+            return Response(
+                "<h1>Documentation Not Found</h1><p>File PANDUAN_PENGGUNAAN_ROC_DASHBOARD.html tidak ditemukan.</p>",
+                mimetype='text/html',
+                status=404
+            )
+    
+    # Serve screenshots folder for documentation
+    @app.route("/screenshots/<path:filename>")
+    def serve_screenshot(filename: str) -> Response:
+        """
+        Serve screenshot images for documentation
+        
+        Args:
+            filename: Screenshot filename
+            
+        Returns:
+            Image file response
+        """
+        screenshots_dir = os.path.join(os.path.dirname(__file__), "screenshots")
+        if os.path.exists(screenshots_dir):
+            return send_from_directory(screenshots_dir, filename)
+        else:
+            return Response("Screenshot not found", status=404)
+    
     # Serve React frontend - CATCH-ALL route (must be LAST)
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")
@@ -74,13 +113,13 @@ def create_app() -> Flask:
             if os.path.exists(file_path) and os.path.isfile(file_path):
                 # Explicitly set MIME type based on file extension
                 if file_path.endswith('.js'):
-                    mimetype = 'application/javascript'
+                    mimetype = 'application/javascript; charset=utf-8'
                 elif file_path.endswith('.mjs'):
-                    mimetype = 'application/javascript'
+                    mimetype = 'application/javascript; charset=utf-8'
                 elif file_path.endswith('.css'):
-                    mimetype = 'text/css'
+                    mimetype = 'text/css; charset=utf-8'
                 elif file_path.endswith('.json'):
-                    mimetype = 'application/json'
+                    mimetype = 'application/json; charset=utf-8'
                 elif file_path.endswith('.png'):
                     mimetype = 'image/png'
                 elif file_path.endswith('.jpg') or file_path.endswith('.jpeg'):
@@ -95,10 +134,23 @@ def create_app() -> Flask:
                     print(f"[DEBUG] MIME type: {mimetype}")
                 
                 response = send_from_directory(Config.DIST_DIR, normalized_path, mimetype=mimetype)
-                # Cache static assets for 1 year (they have hash-based names, so safe to cache)
-                if normalized_path.startswith('assets/'):
-                    response.cache_control.max_age = 31536000  # 1 year
-                    response.cache_control.public = True
+                
+                # Ensure proper headers for CSS files
+                if file_path.endswith('.css'):
+                    response.headers['Content-Type'] = 'text/css; charset=utf-8'
+                    # Disable caching for CSS during development to see changes immediately
+                    if Config.DEBUG:
+                        response.cache_control.no_cache = True
+                        response.cache_control.must_revalidate = True
+                    else:
+                        # Cache CSS in production (hash-based names, safe to cache)
+                        response.cache_control.max_age = 31536000  # 1 year
+                        response.cache_control.public = True
+                else:
+                    # Cache other static assets for 1 year (they have hash-based names, so safe to cache)
+                    if normalized_path.startswith('assets/'):
+                        response.cache_control.max_age = 31536000  # 1 year
+                        response.cache_control.public = True
                 return response
         
         # For all other requests (SPA routes), return index.html

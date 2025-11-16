@@ -16,6 +16,8 @@ export default function StockPartKPIModals({
   totalFSL,
   validParts,
   topPartsByStock,
+  stockHealth,
+  stockUtilization,
   onShowAlertDetail
 }) {
   if (!activeKPI) return null;
@@ -188,46 +190,95 @@ export default function StockPartKPIModals({
                 </div>
               </div>
               <div className={CARD_STYLES.base}>
-                <h3 className={cn(TEXT_STYLES.heading3, 'mb-4')}>🏥 Stock Health</h3>
+                <h3 className={cn(TEXT_STYLES.heading3, 'mb-4')}>🏥 Stock Health (Valid Calculation)</h3>
                 <div className="space-y-3">
                   <div className={cn('flex items-center justify-between p-3 rounded-lg border', ALERT_STYLES.success)}>
-                    <div>
+                    <div className="flex-1">
                       <p className={cn(TEXT_STYLES.body, 'text-green-300')}>Healthy Stock</p>
-                      <p className={TEXT_STYLES.bodySmall}>Stock 10 units</p>
+                      <p className={TEXT_STYLES.bodySmall}>Stock &gt; 10 units</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{stockHealth?.healthyPercentage || 0}% of parts</p>
                     </div>
-                    <p className={cn('text-2xl font-bold text-green-400')}>{validParts.length - stockAlerts.totalLowStock}</p>
+                    <div className="text-right">
+                      <p className={cn('text-2xl font-bold text-green-400')}>{stockHealth?.healthyCount || 0}</p>
+                      <p className="text-xs text-slate-400">parts</p>
+                    </div>
                   </div>
                   <div className={cn('flex items-center justify-between p-3 rounded-lg border', ALERT_STYLES.critical)}>
-                    <div>
-                      <p className={cn(TEXT_STYLES.body, 'text-red-300')}>Critical/Urgent</p>
-                      <p className={TEXT_STYLES.bodySmall}>Stock 0-5 units</p>
+                    <div className="flex-1">
+                      <p className={cn(TEXT_STYLES.body, 'text-red-300')}>Critical (Out of Stock)</p>
+                      <p className={TEXT_STYLES.bodySmall}>Stock = 0 units</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{stockHealth?.criticalPercentage || 0}% of parts</p>
                     </div>
-                    <p className={cn('text-2xl font-bold text-red-400')}>{stockAlerts.criticalCount + stockAlerts.urgentCount}</p>
+                    <div className="text-right">
+                      <p className={cn('text-2xl font-bold text-red-400')}>{stockHealth?.criticalCount || 0}</p>
+                      <p className="text-xs text-slate-400">parts</p>
+                    </div>
                   </div>
                   <div className={cn('flex items-center justify-between p-3 rounded-lg border', ALERT_STYLES.warning)}>
-                    <div>
-                      <p className={cn(TEXT_STYLES.body, 'text-yellow-300')}>Warning</p>
-                      <p className={TEXT_STYLES.bodySmall}>Stock 6-10 units</p>
+                    <div className="flex-1">
+                      <p className={cn(TEXT_STYLES.body, 'text-yellow-300')}>Low Stock</p>
+                      <p className={TEXT_STYLES.bodySmall}>Stock 1-10 units</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{stockHealth?.lowStockPercentage || 0}% of parts</p>
                     </div>
-                    <p className={cn('text-2xl font-bold text-yellow-400')}>{stockAlerts.warningCount}</p>
+                    <div className="text-right">
+                      <p className={cn('text-2xl font-bold text-yellow-400')}>{stockHealth?.lowStockCount || 0}</p>
+                      <p className="text-xs text-slate-400">parts</p>
+                    </div>
                   </div>
+                  {stockHealth?.overstockCount > 0 && (
+                    <div className={cn('flex items-center justify-between p-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10')}>
+                      <div className="flex-1">
+                        <p className={cn(TEXT_STYLES.body, 'text-emerald-300')}>Overstock</p>
+                        <p className={TEXT_STYLES.bodySmall}>Stock &gt; 100 units</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={cn('text-2xl font-bold text-emerald-400')}>{stockHealth?.overstockCount || 0}</p>
+                        <p className="text-xs text-slate-400">parts</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className={CARD_STYLES.base}>
-                <h3 className={cn(TEXT_STYLES.heading3, 'mb-4')}>💡 Rekomendasi</h3>
+                <h3 className={cn(TEXT_STYLES.heading3, 'mb-4')}>💡 Insights & Rekomendasi</h3>
                 <div className="space-y-3">
                   <div className={cn('p-3 rounded-lg border', ALERT_STYLES.info)}>
-                    <p className={cn(TEXT_STYLES.body, 'text-blue-300 mb-2')}>✅ Optimasi Stock</p>
-                    <p className={TEXT_STYLES.bodySmall}>Review stock level. Target: avg {totalParts > 0 ? Math.round(totalStockQuantity / totalParts) : 0} unit/part.</p>
+                    <p className={cn(TEXT_STYLES.body, 'text-blue-300 mb-2')}>📊 Stock Statistics</p>
+                    <div className={TEXT_STYLES.bodySmall}>
+                      <p>• Average: <strong>{stockUtilization?.avgStockPerPart || 0}</strong> units/part</p>
+                      <p>• Median: <strong>{stockUtilization?.medianStockPerPart || 0}</strong> units/part</p>
+                      <p>• Concentration: <strong>{stockUtilization?.stockConcentration || 0}%</strong> in top 20% parts</p>
+                    </div>
                   </div>
                   <div className={cn('p-3 rounded-lg border', getGradientCard('purple', false))}>
-                    <p className={cn(TEXT_STYLES.body, 'text-purple-300 mb-2')}>📊 Distribution</p>
-                    <p className={TEXT_STYLES.bodySmall}>Balance stok antar FSL untuk efisiensi.</p>
+                    <p className={cn(TEXT_STYLES.body, 'text-purple-300 mb-2')}>⚖️ Stock Distribution</p>
+                    <p className={TEXT_STYLES.bodySmall}>
+                      {stockUtilization?.stockDistribution === 'highly_concentrated' && 
+                        '⚠️ Stock sangat terkonsentrasi. Pertimbangkan redistribusi.'}
+                      {stockUtilization?.stockDistribution === 'concentrated' && 
+                        '📊 Stock terkonsentrasi. Review balance antar part.'}
+                      {stockUtilization?.stockDistribution === 'balanced' && 
+                        '✅ Distribusi stock seimbang. Maintain current level.'}
+                      {stockUtilization?.stockDistribution === 'distributed' && 
+                        '🔄 Stock terdistribusi merata. Good inventory management.'}
+                    </p>
                   </div>
                   <div className={cn('p-3 rounded-lg border', ALERT_STYLES.success)}>
-                    <p className={cn(TEXT_STYLES.body, 'text-green-300 mb-2')}>🎯 Safety Stock</p>
-                    <p className={TEXT_STYLES.bodySmall}>Maintain minimum 10 unit untuk part critical.</p>
+                    <p className={cn(TEXT_STYLES.body, 'text-green-300 mb-2')}>✅ Health Status</p>
+                    <p className={TEXT_STYLES.bodySmall}>
+                      {stockHealth?.healthyPercentage || 0}% parts dalam kondisi sehat ({stockHealth?.healthyCount || 0} dari {stockHealth?.totalPartsCount || 0} parts).
+                      {stockHealth?.criticalCount > 0 && ` ${stockHealth.criticalCount} parts memerlukan immediate action.`}
+                    </p>
                   </div>
+                  {stockHealth?.lowStockPercentage > 30 && (
+                    <div className={cn('p-3 rounded-lg border', ALERT_STYLES.warning)}>
+                      <p className={cn(TEXT_STYLES.body, 'text-yellow-300 mb-2')}>⚠️ Action Required</p>
+                      <p className={TEXT_STYLES.bodySmall}>
+                        {stockHealth.lowStockPercentage}% parts ({stockHealth.lowStockCount}) memiliki stock rendah. 
+                        Prioritaskan restocking untuk part-part ini.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -275,17 +326,51 @@ export default function StockPartKPIModals({
                 )}
               </div>
               <div className={getGradientCard('purple', false)}>
-                <h3 className={cn(TEXT_STYLES.heading3, 'text-purple-300 mb-4')}>🔍 Analisis Stock</h3>
+                <h3 className={cn(TEXT_STYLES.heading3, 'text-purple-300 mb-4')}>🔍 Analisis Stock (Valid Calculation)</h3>
                 <div className="space-y-3">
                   <div className={cn('p-3 rounded-lg border', getGradientCard('purple', false))}>
-                    <p className={cn(TEXT_STYLES.body, 'text-purple-200 mb-2')}>📈 High Stock Parts</p>
-                    <p className={TEXT_STYLES.bodySmall}>
-                      {topPartsByStock.length} part menyimpan {topPartsByStock.reduce((sum, p) => sum + p.value, 0).toLocaleString()} units ({totalStockQuantity > 0 ? Math.round((topPartsByStock.reduce((sum, p) => sum + p.value, 0) / totalStockQuantity) * 100) : 0}% dari total).
-                    </p>
+                    <p className={cn(TEXT_STYLES.body, 'text-purple-200 mb-2')}>📈 Top Parts Analysis</p>
+                    <div className={TEXT_STYLES.bodySmall}>
+                      <p className="mb-1">
+                        <strong>{topPartsByStock.length} parts</strong> teratas menyimpan{' '}
+                        <strong>{topPartsByStock.reduce((sum, p) => sum + p.value, 0).toLocaleString()} units</strong>
+                      </p>
+                      <p className="mb-1">
+                        Ini mewakili{' '}
+                        <strong>
+                          {totalStockQuantity > 0 
+                            ? Math.round((topPartsByStock.reduce((sum, p) => sum + p.value, 0) / totalStockQuantity) * 100) 
+                            : 0}%
+                        </strong>{' '}
+                        dari total stock ({totalStockQuantity.toLocaleString()} units)
+                      </p>
+                      <p className="text-[10px] text-purple-300/70 mt-2">
+                        Avg per top part: {topPartsByStock.length > 0 
+                          ? Math.round(topPartsByStock.reduce((sum, p) => sum + p.value, 0) / topPartsByStock.length)
+                          : 0} units
+                      </p>
+                    </div>
                   </div>
-                  <div className={cn('p-3 rounded-lg', CARD_STYLES.baseSmall)}>
-                    <p className={cn(TEXT_STYLES.body, 'mb-2')}>💰 Inventory Value</p>
-                    <p className={TEXT_STYLES.bodySmall}>Part dengan stock tinggi berpotensi mengikat capital.</p>
+                  {stockUtilization && (
+                    <div className={cn('p-3 rounded-lg border', CARD_STYLES.baseSmall)}>
+                      <p className={cn(TEXT_STYLES.body, 'mb-2')}>📊 Stock Concentration</p>
+                      <div className={TEXT_STYLES.bodySmall}>
+                        <p>• Top 20% parts: <strong>{stockUtilization.stockConcentration}%</strong> of total stock</p>
+                        <p>• Distribution: <strong>
+                          {stockUtilization.stockDistribution === 'highly_concentrated' && 'Highly Concentrated'}
+                          {stockUtilization.stockDistribution === 'concentrated' && 'Concentrated'}
+                          {stockUtilization.stockDistribution === 'balanced' && 'Balanced'}
+                          {stockUtilization.stockDistribution === 'distributed' && 'Well Distributed'}
+                        </strong></p>
+                      </div>
+                    </div>
+                  )}
+                  <div className={cn('p-3 rounded-lg border border-amber-500/40 bg-amber-500/10')}>
+                    <p className={cn(TEXT_STYLES.body, 'text-amber-300 mb-2')}>💰 Capital Impact</p>
+                    <p className={TEXT_STYLES.bodySmall}>
+                      Part dengan stock tinggi ({topPartsByStock.length} parts) berpotensi mengikat capital.
+                      {stockUtilization?.stockConcentration > 60 && ' Pertimbangkan optimasi untuk mengurangi capital tie-up.'}
+                    </p>
                   </div>
                 </div>
               </div>

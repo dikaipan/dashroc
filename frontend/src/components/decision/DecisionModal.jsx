@@ -3,7 +3,7 @@
  * Fullscreen modal for detailed decision analysis
  */
 import React from 'react';
-import { X, Award, TrendingUp, AlertTriangle } from 'react-feather';
+import { X, Award, TrendingUp, AlertTriangle, MapPin, Users, Package } from 'react-feather';
 import { 
   ResponsiveContainer, 
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
@@ -11,6 +11,108 @@ import {
 } from 'recharts';
 import { getGradientCard, TEXT_STYLES, cn } from '../../constants/styles';
 import { useTheme } from '../../contexts/ThemeContext';
+import EngineerDetailCard from './EngineerDetailCard';
+
+// Custom Tooltip Component for Distance Analysis
+const CustomDistanceTooltip = ({ active, payload, label, cardData }) => {
+  const { isDark } = useTheme();
+  
+  if (!active || !payload || !payload.length) return null;
+  
+  const areaData = cardData?.find(d => d.areaGroup === label);
+  if (!areaData) return null;
+  
+  // Group payload by category - now zone maps to distance
+  const zoneData = payload.filter(p => ['0-60km', '60-120km', '>120km'].includes(p.name));
+  
+  const getColorForCategory = (name) => {
+    const colors = {
+      '0-60km': '#10b981',
+      '60-120km': '#f59e0b',
+      '>120km': '#ef4444'
+    };
+    return colors[name] || '#94a3b8';
+  };
+  
+  const getIconForCategory = (name) => {
+    if (name.includes('km')) return '📏';
+    return '📊';
+  };
+  
+  return (
+    <div 
+      className={cn(
+        "rounded-xl shadow-2xl border-2 overflow-hidden backdrop-blur-md",
+        isDark 
+          ? "bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 border-slate-600 shadow-blue-500/20" 
+          : "bg-gradient-to-br from-white via-blue-50 to-white border-blue-200 shadow-blue-500/10"
+      )}
+    >
+      {/* Header */}
+      <div className={cn(
+        "px-5 py-4 border-b",
+        isDark ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-slate-700" : "bg-gradient-to-r from-blue-100 to-purple-100 border-blue-200"
+      )}>
+        <div className="flex items-center gap-2 mb-2">
+          <MapPin size={18} className={isDark ? "text-blue-400" : "text-blue-600"} />
+          <h4 className={cn("font-bold text-lg", isDark ? "text-slate-100" : "text-gray-900")}>
+            {label}
+          </h4>
+        </div>
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-1.5">
+            <Package size={14} className={isDark ? "text-slate-400" : "text-gray-600"} />
+            <span className={isDark ? "text-slate-300" : "text-gray-700"}>
+              <span className="font-semibold">{areaData.total || 0}</span> Mesin
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Users size={14} className={isDark ? "text-slate-400" : "text-gray-600"} />
+            <span className={isDark ? "text-slate-300" : "text-gray-700"}>
+              <span className="font-semibold">{areaData.engineers || 0}</span> Engineer
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Content */}
+      <div className="px-5 py-4 space-y-4">
+        {/* Zone/Distance Categories (combined) */}
+        {zoneData.length > 0 && (
+          <div>
+            <h5 className={cn("text-xs font-semibold uppercase tracking-wide mb-2", isDark ? "text-slate-400" : "text-gray-600")}>
+              Kategori Distance
+            </h5>
+            <div className="space-y-2">
+              {zoneData.map((entry, idx) => {
+                const color = getColorForCategory(entry.name);
+                return (
+                  <div key={idx} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-1">
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm"
+                        style={{ 
+                          backgroundColor: color,
+                          boxShadow: `0 0 0 2px ${color}40, 0 0 0 4px ${isDark ? '#1e293b' : '#ffffff'}`
+                        }}
+                      />
+                      <span className={cn("text-sm font-medium", isDark ? "text-slate-300" : "text-gray-700")}>
+                        {entry.name}
+                      </span>
+                    </div>
+                    <span className={cn("text-sm font-bold", isDark ? "text-slate-100" : "text-gray-900")}>
+                      {entry.value?.toLocaleString() || 0} mesin
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default function DecisionModal({ card, onClose }) {
   const { isDark } = useTheme();
@@ -45,20 +147,34 @@ export default function DecisionModal({ card, onClose }) {
             <BarChart data={card.data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis 
-                dataKey={isDistanceData ? 'engineer' : isZoneData ? 'zone' : (card.id === 'regional-efficiency' ? 'region' : 'type')} 
+                dataKey={isDistanceData ? 'areaGroup' : isZoneData ? 'zone' : (card.id === 'regional-efficiency' ? 'region' : 'type')} 
                 stroke="#94a3b8" 
                 angle={-45} 
                 textAnchor="end" 
                 height={80}
               />
               <YAxis stroke="#94a3b8" />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }} />
+              {isDistanceData ? (
+                <Tooltip 
+                  content={(props) => <CustomDistanceTooltip {...props} cardData={card.data} />}
+                  cursor={{ fill: isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(59, 130, 246, 0.1)' }}
+                />
+              ) : (
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                    border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)'
+                  }}
+                />
+              )}
               <Legend />
               {isDistanceData ? (
                 <>
-                  <Bar dataKey="sameZone" fill="#10b981" name="Same Zone" />
-                  <Bar dataKey="nearZone" fill="#f59e0b" name="Near Zone" />
-                  <Bar dataKey="farZone" fill="#ef4444" name="Far Zone" />
+                  <Bar dataKey="sameZone" fill="#10b981" name="0-60km" />
+                  <Bar dataKey="nearZone" fill="#f59e0b" name="60-120km" />
+                  <Bar dataKey="farZone" fill="#ef4444" name=">120km" />
                 </>
               ) : isZoneData ? (
                 <>
@@ -89,28 +205,31 @@ export default function DecisionModal({ card, onClose }) {
 
   const Icon = card.icon;
 
+  // Check if this is Top Engineer Performance card
+  const isEngineerPerformance = card.id === 'engineer-performance';
+  
   return (
-    <div className={`fixed inset-0 ${isDark ? 'bg-black/80' : 'bg-black/60'} backdrop-blur-sm z-50 flex items-center justify-center p-4`}>
-      <div className={`${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'} rounded-2xl w-full max-w-7xl max-h-[90vh] overflow-y-auto border shadow-2xl`}>
+    <div className={`fixed inset-0 ${isDark ? 'bg-black/80' : 'bg-black/60'} backdrop-blur-sm z-50 flex items-center justify-center ${isEngineerPerformance ? 'p-0' : 'p-4'}`}>
+      <div className={`${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'} ${isEngineerPerformance ? 'rounded-none w-full h-full max-w-none max-h-none' : 'rounded-2xl w-full max-w-7xl max-h-[90vh]'} overflow-y-auto border shadow-2xl`}>
         {/* Modal Header */}
-        <div className={`sticky top-0 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'} border-b px-8 py-6 flex items-center justify-between z-10`}>
+        <div className={`sticky top-0 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'} border-b ${isEngineerPerformance ? 'px-6 py-4' : 'px-8 py-6'} flex items-center justify-between z-10`}>
           <div className="flex items-center gap-4">
-            <Icon className={`text-${card.color}-${isDark ? '400' : '600'}`} size={32} />
+            <Icon className={`text-${card.color}-${isDark ? '400' : '600'}`} size={isEngineerPerformance ? 28 : 32} />
             <div>
-              <h2 className={`text-3xl font-bold ${isDark ? 'text-slate-100' : 'text-gray-900'}`}>{card.title}</h2>
-              <p className={isDark ? "text-slate-400 mt-1" : "text-gray-600 mt-1"}>{card.summary}</p>
+              <h2 className={`${isEngineerPerformance ? 'text-2xl' : 'text-3xl'} font-bold ${isDark ? 'text-slate-100' : 'text-gray-900'}`}>{card.title}</h2>
+              <p className={`${isDark ? "text-slate-400" : "text-gray-600"} ${isEngineerPerformance ? "text-sm mt-0.5" : "mt-1"}`}>{card.summary}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className={`p-2 ${isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-200' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'} rounded-lg transition-colors`}
+            className={`${isEngineerPerformance ? 'p-1.5' : 'p-2'} ${isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-200' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'} rounded-lg transition-colors`}
           >
-            <X size={24} />
+            <X size={isEngineerPerformance ? 20 : 24} />
           </button>
         </div>
 
         {/* Modal Content */}
-        <div className="p-8 space-y-8">
+        <div className={`${isEngineerPerformance ? 'p-6 space-y-6' : 'p-8 space-y-8'}`}>
           {/* Description */}
           <div className={`${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-300'} rounded-xl p-6 border`}>
             <h3 className={`text-lg font-semibold ${isDark ? 'text-slate-200' : 'text-gray-900'} mb-3 flex items-center gap-2`}>
@@ -125,6 +244,24 @@ export default function DecisionModal({ card, onClose }) {
             <h3 className={`text-lg font-semibold ${isDark ? 'text-slate-200' : 'text-gray-900'} mb-6`}>Data Visualization</h3>
             {renderChart()}
           </div>
+
+          {/* Engineer Details (for Top Engineer Performance) */}
+          {card.id === 'engineer-performance' && card.data && card.data.length > 0 && (
+            <div className={`${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-300'} rounded-xl p-6 border`}>
+              <h3 className={`text-lg font-semibold ${isDark ? 'text-slate-200' : 'text-gray-900'} mb-6`}>
+                Top Engineer Performance Details
+              </h3>
+              <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                {card.data.map((engineer, index) => (
+                  <EngineerDetailCard 
+                    key={engineer.name || index} 
+                    engineer={engineer} 
+                    rank={index + 1} 
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Analysis */}
           <div className={`${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-300'} rounded-xl p-6 border`}>

@@ -24,6 +24,17 @@ module.exports = {
       boxShadow: {
         card: "0 10px 30px rgba(0,0,0,0.35)",
       },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
+      letterSpacing: {
+        'tight': '-0.025em',
+        'tighter': '-0.05em',
+        'wide': '0.025em',
+        'wider': '0.05em',
+        'widest': '0.1em',
+      },
     },
   },
   darkMode: "class",

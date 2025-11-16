@@ -17,14 +17,20 @@
     "test:ui": "cross-env NODE_ENV=test VITE_SSR=false vitest --ui",
     "test:coverage": "cross-env NODE_ENV=test VITE_SSR=false vitest --coverage",
     "netlify:build": "npm run build",
-    "netlify:dev": "netlify dev"
+    "netlify:dev": "netlify dev",
+    "analyze:deps": "node scripts/analyze-deps.js",
+    "install:minimal": "npm install && node scripts/remove-large-deps.js",
+    "install:full": "npm install",
+    "install:prod": "npm ci --only=production",
+    "remove:large-deps": "node scripts/remove-large-deps.js",
+    "restore:large-deps": "npm install netlify-cli @vitest/ui --save-dev"
   },
   "dependencies": {
     "@changey/react-leaflet-markercluster": "^4.0.0-rc1",
     "leaflet": "^1.9.4",
     "papaparse": "^5.5.3",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
     "react-feather": "^2.0.10",
     "react-hot-toast": "^2.4.1",
     "react-is": "^19.2.0",

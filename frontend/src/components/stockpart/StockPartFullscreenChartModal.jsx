@@ -123,7 +123,8 @@ export default function StockPartFullscreenChartModal({
             </div>
           )}
           {chartType === 'region-dist' && (
-            <ResponsiveContainer width="100%" height="100%">
+            <div style={{ width: '100%', height: '400px', minHeight: '400px', minWidth: '100px', position: 'relative', display: 'block' }}>
+              <ResponsiveContainer width="100%" height={400} minHeight={400} minWidth={100}>
               <PieChart>
                 <Pie
                   data={regionDistribution}
@@ -146,6 +147,7 @@ export default function StockPartFullscreenChartModal({
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
+            </div>
           )}
         </div>
       </div>

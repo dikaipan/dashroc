@@ -1,0 +1,132 @@
+/* src/styles/utilities.css */
+/* Utility classes and helper styles */
+
+/* Border radius utilities */
+.bg-red-500\/20,
+.bg-orange-500\/20,
+.bg-yellow-500\/20,
+.bg-purple-500\/20,
+.bg-green-500\/20,
+.bg-blue-500\/20,
+[class*="bg-red-"],
+[class*="bg-orange-"],
+[class*="bg-yellow-"],
+[class*="bg-purple-"],
+[class*="bg-green-"],
+[class*="bg-blue-"],
+[class*="bg-slate-"] {
+  border-radius: 12px !important;
+}
+
+/* Progress bar containers */
+.bg-slate-700,
+.bg-slate-700\/50,
+[class*="bg-slate-7"] {
+  border-radius: 16px !important;
+}
+
+/* Progress bars */
+.h-2,
+.h-3,
+.h-3\.5,
+[class*="h-full"] {
+  border-radius: 16px !important;
+}
+
+/* Small info boxes */
+.p-2,
+.p-2\.5,
+.p-3,
+[class*="p-2"],
+[class*="p-3"] {
+  border-radius: 14px !important;
+}
+
+/* Badge elements */
+.px-2,
+.px-3,
+[class*="rounded"] {
+  border-radius: 10px !important;
+}
+
+/* Cards */
+.rounded-xl,
+.rounded-lg,
+[class*="rounded-"] {
+  border-radius: 18px !important;
+}
+
+/* Buttons */
+button {
+  border-radius: 12px !important;
+}
+
+/* Input fields */
+input,
+select,
+textarea {
+  border-radius: 12px !important;
+}
+
+/* Status text colors in light mode */
+html.light-theme .text-green-400,
+html.light-theme .text-green-300 {
+  color: #15803d !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-yellow-400,
+html.light-theme .text-yellow-300 {
+  color: #a16207 !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-red-400,
+html.light-theme .text-red-300 {
+  color: #b91c1c !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-blue-400,
+html.light-theme .text-blue-300 {
+  color: #1d4ed8 !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-purple-400,
+html.light-theme .text-purple-300 {
+  color: #7e22ce !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-orange-400,
+html.light-theme .text-orange-300 {
+  color: #c2410c !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-pink-400,
+html.light-theme .text-pink-300 {
+  color: #be185d !important;
+  font-weight: 600 !important;
+}
+
+html.light-theme .text-cyan-400,
+html.light-theme .text-cyan-300 {
+  color: #0e7490 !important;
+  font-weight: 600 !important;
+}
+
+/* Multi-color progress bars for ranking */
+html.light-theme .from-orange-400.to-orange-300 {
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%) !important;
+}
+
+html.light-theme .from-orange-500.to-orange-400 {
+  background: linear-gradient(90deg, #a855f7 0%, #c084fc 100%) !important;
+}
+
+html.light-theme .from-orange-600.to-orange-500 {
+  background: linear-gradient(90deg, #14b8a6 0%, #2dd4bf 100%) !important;
+}
+

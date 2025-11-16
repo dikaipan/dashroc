@@ -5,6 +5,27 @@ let eventQueue = [];
 let batchTimeout = null;
 const BATCH_DELAY = 50; // Batch events within 50ms
 
+// Check for scheduler.postTask availability (better priority management)
+const hasPostTask = typeof scheduler !== 'undefined' && scheduler.postTask;
+
+/**
+ * Yields to browser using the best available API
+ * @param {Function} callback - Function to execute after yielding
+ * @param {string} priority - Priority level for postTask
+ */
+function yieldToBrowser(callback, priority = 'user-visible') {
+  if (hasPostTask) {
+    // Use scheduler.postTask for better priority management (Chrome 94+)
+    scheduler.postTask(callback, { priority });
+  } else if (typeof requestIdleCallback !== 'undefined') {
+    // Use requestIdleCallback as fallback
+    requestIdleCallback(callback, { timeout: 100 });
+  } else {
+    // Fallback to setTimeout
+    setTimeout(callback, 0);
+  }
+}
+
 /**
  * Batches event dispatches to prevent performance violations
  * Multiple events of the same type within BATCH_DELAY will be merged into one
@@ -35,16 +56,13 @@ export function batchedDispatchEvent(eventName, eventData = null) {
     // Dispatch each unique event type only once
     Object.keys(eventGroups).forEach(eventName => {
       const events = eventGroups[eventName];
-      // Use requestIdleCallback if available for non-critical events
+      // Use scheduler.postTask for better performance and priority management
       const dispatch = () => {
         window.dispatchEvent(new Event(eventName));
       };
       
-      if (window.requestIdleCallback) {
-        window.requestIdleCallback(dispatch, { timeout: 100 });
-      } else {
-        requestAnimationFrame(dispatch);
-      }
+      // Use yieldToBrowser which prefers scheduler.postTask
+      yieldToBrowser(dispatch, 'user-visible');
     });
     
     // Clear queue

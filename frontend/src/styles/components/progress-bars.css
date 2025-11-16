@@ -1,0 +1,60 @@
+/* src/styles/components/progress-bars.css */
+/* Progress bars styles with theme support */
+
+/* Progress bars inside cards - vibrant contrasting colors for light mode */
+html.light-theme .from-green-500,
+html.light-theme .from-green-400,
+html.light-theme .from-emerald-500,
+html.light-theme .bg-gradient-to-r.from-green-500 {
+  background: linear-gradient(90deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%) !important;
+}
+
+html.light-theme .from-blue-500,
+html.light-theme .from-blue-400,
+html.light-theme .bg-gradient-to-r.from-blue-500 {
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 50%, #93c5fd 100%) !important;
+}
+
+html.light-theme .from-purple-500,
+html.light-theme .from-purple-400,
+html.light-theme .bg-gradient-to-r.from-purple-500 {
+  background: linear-gradient(90deg, #059669 0%, #10b981 50%, #34d399 100%) !important;
+}
+
+html.light-theme .from-orange-500,
+html.light-theme .from-orange-400,
+html.light-theme .bg-gradient-to-r.from-orange-500 {
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%) !important;
+}
+
+html.light-theme .from-pink-500,
+html.light-theme .from-pink-400,
+html.light-theme .bg-gradient-to-r.from-pink-500 {
+  background: linear-gradient(90deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%) !important;
+}
+
+html.light-theme .from-cyan-500,
+html.light-theme .from-cyan-400,
+html.light-theme .bg-gradient-to-r.from-cyan-500 {
+  background: linear-gradient(90deg, #db2777 0%, #ec4899 50%, #f472b6 100%) !important;
+}
+
+html.light-theme .from-yellow-500,
+html.light-theme .from-yellow-400,
+html.light-theme .bg-gradient-to-r.from-yellow-500 {
+  background: linear-gradient(90deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%) !important;
+}
+
+html.light-theme .from-red-500,
+html.light-theme .from-red-400,
+html.light-theme .bg-gradient-to-r.from-red-500 {
+  background: linear-gradient(90deg, #059669 0%, #10b981 50%, #34d399 100%) !important;
+}
+
+html.light-theme .from-slate-400,
+html.light-theme .from-slate-500,
+html.light-theme .bg-gradient-to-r.from-slate-400,
+html.light-theme .bg-gradient-to-r.from-slate-500 {
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%) !important;
+}
+

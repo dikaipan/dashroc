@@ -1,0 +1,68 @@
+/* src/styles/components/charts.css */
+/* Recharts chart component styles */
+
+/* Recharts bars - vibrant colors for light mode */
+html.light-theme .recharts-bar-rectangle path {
+  fill: #2563eb !important;
+  opacity: 1 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#3b82f6"],
+html.light-theme .recharts-bar path[fill="#60a5fa"] {
+  fill: #2563eb !important;
+}
+
+html.light-theme .recharts-bar path[fill="#10b981"],
+html.light-theme .recharts-bar path[fill="#34d399"] {
+  fill: #059669 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#8b5cf6"],
+html.light-theme .recharts-bar path[fill="#a78bfa"] {
+  fill: #7c3aed !important;
+}
+
+html.light-theme .recharts-bar path[fill="#f59e0b"],
+html.light-theme .recharts-bar path[fill="#fbbf24"] {
+  fill: #d97706 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#06b6d4"],
+html.light-theme .recharts-bar path[fill="#22d3ee"] {
+  fill: #0891b2 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#ec4899"],
+html.light-theme .recharts-bar path[fill="#f472b6"] {
+  fill: #db2777 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#ef4444"],
+html.light-theme .recharts-bar path[fill="#f87171"] {
+  fill: #dc2626 !important;
+}
+
+html.light-theme .recharts-bar path[fill="#f97316"],
+html.light-theme .recharts-bar path[fill="#fb923c"] {
+  fill: #ea580c !important;
+}
+
+html.light-theme .recharts-bar path[fill="#6366f1"],
+html.light-theme .recharts-bar path[fill="#818cf8"] {
+  fill: #4f46e5 !important;
+}
+
+html.light-theme .recharts-cartesian-axis-line,
+html.light-theme .recharts-cartesian-axis-tick-line {
+  stroke: #64748b !important;
+}
+
+html.light-theme .recharts-cartesian-grid-horizontal line,
+html.light-theme .recharts-cartesian-grid-vertical line {
+  stroke: #cbd5e1 !important;
+}
+
+html.light-theme .recharts-polar-grid line {
+  stroke: #cbd5e1 !important;
+}
+

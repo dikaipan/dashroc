@@ -6,11 +6,12 @@ export default defineConfig(({ mode }) => {
   // This ensures react-router uses production builds, not development chunks
   const isProduction = mode === 'production' || process.env.NODE_ENV === 'production';
   
-  if (!isProduction) {
-    console.warn('⚠️  Warning: Building in non-production mode. This may cause module resolution issues.');
-  } else {
-    console.log('✅ Building in production mode');
-  }
+  // Build mode logging disabled to reduce console noise
+  // if (!isProduction) {
+  //   console.warn('⚠️  Warning: Building in non-production mode.');
+  // } else {
+  //   console.log('✅ Building in production mode');
+  // }
   
   return {
     // Explicitly set mode to production for builds
@@ -22,7 +23,16 @@ export default defineConfig(({ mode }) => {
       'NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
       '__DEV__': JSON.stringify(isProduction ? 'false' : 'true')
     },
-    plugins: [react()],
+    plugins: [
+      react({
+        // Optimize Fast Refresh
+        fastRefresh: true,
+        // Exclude context files from Fast Refresh issues
+        exclude: /node_modules/,
+        // Only include .jsx and .js files
+        include: '**/*.{jsx,js}',
+      })
+    ],
     base: '/',
     publicDir: 'public',
     resolve: {
@@ -31,7 +41,16 @@ export default defineConfig(({ mode }) => {
         'react-router/dist/development': 'react-router/dist/production',
         'react-router-dom/dist/development': 'react-router-dom/dist/production',
       },
-      dedupe: ['react', 'react-dom', 'react-is', 'react-router', 'react-router-dom'], // Ensure single React instance
+      dedupe: [
+        'react', 
+        'react-dom', 
+        'react-is', 
+        'react-router', 
+        'react-router-dom',
+        'react-feather',
+        'react-hot-toast',
+        'react-leaflet'
+      ], // Ensure single React instance for all React packages
       preserveSymlinks: false,
     },
     server: {
@@ -45,8 +64,10 @@ export default defineConfig(({ mode }) => {
           ws: true, // Enable websocket proxy
           configure: (proxy, _options) => {
             proxy.on('error', (err, req, res) => {
-              console.error('[Vite Proxy] Error:', err.message);
-              console.error('[Vite Proxy] Request URL:', req.url);
+              // Only log critical proxy errors
+              if (process.env.VITE_DEBUG_PROXY === 'true') {
+                console.error('[Vite Proxy] Error:', err.message, req.url);
+              }
               if (res && !res.headersSent) {
                 res.writeHead(500, {
                   'Content-Type': 'application/json'
@@ -57,12 +78,14 @@ export default defineConfig(({ mode }) => {
                 }));
               }
             });
-            proxy.on('proxyReq', (proxyReq, req, _res) => {
-              console.log('[Vite Proxy] Proxying:', req.method, req.url, '-> http://127.0.0.1:5000' + req.url);
-            });
-            proxy.on('proxyRes', (proxyRes, req, _res) => {
-              console.log('[Vite Proxy] Response:', proxyRes.statusCode, req.url);
-            });
+            // Log only errors to avoid performance violations during HMR
+            // Uncomment below for debugging proxy issues:
+            // proxy.on('proxyReq', (proxyReq, req, _res) => {
+            //   console.log('[Vite Proxy] Proxying:', req.method, req.url);
+            // });
+            // proxy.on('proxyRes', (proxyRes, req, _res) => {
+            //   console.log('[Vite Proxy] Response:', proxyRes.statusCode, req.url);
+            // });
           }
         }
       },
@@ -98,35 +121,38 @@ export default defineConfig(({ mode }) => {
       },
       rollupOptions: {
         output: {
+          // Optimize chunk names for better caching
+          chunkFileNames: 'assets/js/[name]-[hash].js',
+          entryFileNames: 'assets/js/[name]-[hash].js',
+          assetFileNames: 'assets/[ext]/[name]-[hash].[ext]',
           manualChunks(id) {
-            // Vite automatically excludes test files and unused imports through tree-shaking
-            // This function only controls how chunks are split, not what's included
-            
+            // Safe chunking - keep React ecosystem together
             if (id.includes('node_modules')) {
-              // Large data files (definitely safe to split - no dependencies)
-              if (id.includes('geojson') || id.includes('indonesia-prov')) {
-                return 'data-geojson';
+              // Keep all React-related in one chunk to prevent loading order issues
+              if (id.includes('react') || id.includes('scheduler')) {
+                return 'vendor';
               }
-              
-              // Leaflet core ONLY (not react-leaflet or @changey/react-leaflet)
-              // Leaflet core doesn't need React, but react-leaflet wrappers do
-              if (
-                id.includes('node_modules/leaflet/') && 
-                !id.includes('react-leaflet') && 
-                !id.includes('@changey/react-leaflet')
-              ) {
-                return 'vendor-maps';
+              // Charts library - separate but safe
+              if (id.includes('recharts')) {
+                return 'vendor';
               }
-              
-              // React Router packages should stay together
-              if (id.includes('react-router')) {
-                return 'vendor-react';
+              // Map library - separate but safe
+              if (id.includes('leaflet')) {
+                return 'vendor';
               }
-              
-              // EVERYTHING ELSE (including all React packages, react-router, react-leaflet, papaparse, etc.)
-              // goes into vendor-react to ensure React is always available when needed
-              // This prevents "Cannot read properties of undefined (reading 'forwardRef')" errors
-              return 'vendor-react';
+              // Everything else
+              return 'vendor';
+            }
+            
+            // Split large source files into separate chunks
+            if (id.includes('src/components/map/MapWithRegions')) {
+              return 'map-regions';
+            }
+            if (id.includes('src/pages/Dashboard')) {
+              return 'page-dashboard';
+            }
+            if (id.includes('src/components/charts/EngineerTrainingKPICards')) {
+              return 'charts-kpi';
             }
           },
         },
@@ -134,8 +160,11 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 1000,
       // Optimize chunk loading
       sourcemap: false, // Disable sourcemaps in production for smaller builds
-      minify: 'esbuild', // Use esbuild for faster builds (terser requires additional package)
-      // Note: To remove console.log, add this to build command or use a plugin
+      minify: 'esbuild', // Use esbuild for faster builds
+      cssCodeSplit: true, // Split CSS for better caching
+      // Performance optimizations
+      reportCompressedSize: false, // Faster builds
+      cssMinify: true, // Minify CSS
     },
   };
 });

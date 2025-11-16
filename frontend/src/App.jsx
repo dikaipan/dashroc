@@ -8,7 +8,8 @@ import ProtectedRoute from "./components/common/ProtectedRoute";
 import LoadingSkeleton from "./components/common/LoadingSkeleton";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
-import "./styles.css";
+import "./styles/main.css";
+import "./styles.css"; /* Keep for backward compatibility - will be removed after migration */
 
 // Lazy load pages for code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));

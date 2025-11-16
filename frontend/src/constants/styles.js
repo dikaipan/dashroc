@@ -162,20 +162,32 @@ export const TABLE_STYLES = {
 // ============================================================================
 
 export const TEXT_STYLES = {
-  heading1: 'text-3xl font-bold text-slate-100',
-  heading2: 'text-2xl font-bold text-white',
-  heading3: 'text-xl font-bold text-white',
-  heading4: 'text-lg font-semibold text-white',
-  body: 'text-sm text-slate-300',
-  bodySmall: 'text-xs text-slate-400',
-  label: 'block text-sm font-medium text-slate-300 mb-2',
-  labelSmall: 'block text-xs font-medium text-slate-400 mb-1',
-  muted: 'text-slate-400',
-  mutedSmall: 'text-xs text-slate-400',
-  link: 'text-blue-400 hover:text-blue-300 transition-colors',
-  kpiTitle: 'text-sm font-medium text-slate-300 mb-2',
-  kpiValue: 'text-3xl font-bold text-white',
-  kpiSubtitle: 'text-xs text-slate-400 mt-1',
+  heading1: 'text-3xl font-bold text-slate-100 tracking-tight font-display',
+  heading2: 'text-2xl font-bold text-white tracking-tight font-display',
+  heading3: 'text-xl font-bold text-white tracking-tight font-display',
+  heading4: 'text-lg font-semibold text-white tracking-tight font-display',
+  body: 'text-sm text-slate-300 leading-relaxed font-sans',
+  bodySmall: 'text-xs text-slate-400 leading-relaxed font-sans',
+  label: 'block text-sm font-medium text-slate-300 mb-2 tracking-wide font-sans',
+  labelSmall: 'block text-xs font-medium text-slate-400 mb-1 tracking-wide font-sans',
+  muted: 'text-slate-400 leading-relaxed font-sans',
+  mutedSmall: 'text-xs text-slate-400 leading-relaxed font-sans',
+  link: 'text-blue-400 hover:text-blue-300 transition-colors font-medium font-sans',
+  kpiTitle: 'text-sm font-medium text-slate-300 mb-2 tracking-wide uppercase font-sans',
+  kpiValue: 'text-3xl font-bold text-white tracking-tight leading-none font-display',
+  kpiSubtitle: 'text-xs text-slate-400 mt-1 leading-relaxed tracking-wide font-sans',
+  // Enhanced typography for cards
+  cardTitle: 'text-sm font-semibold text-slate-200 tracking-wider uppercase font-sans antialiased',
+  cardValue: 'text-2xl font-bold text-white tracking-tight leading-none font-display antialiased',
+  cardSubtitle: 'text-xs text-slate-300 leading-relaxed tracking-wide font-sans antialiased',
+  cardLabel: 'text-xs font-medium text-slate-400 tracking-wider uppercase font-sans antialiased',
+  cardMetric: 'text-xs font-bold text-slate-200 tracking-wide font-sans antialiased',
+  cardDescription: 'text-xs text-slate-400 leading-relaxed font-sans antialiased',
+  // Additional refined styles
+  cardHeader: 'text-sm font-semibold tracking-wider uppercase font-sans antialiased',
+  cardNumber: 'text-2xl font-bold tracking-tight leading-none font-display antialiased',
+  cardInfo: 'text-xs leading-relaxed tracking-wide font-sans antialiased',
+  cardBadge: 'text-xs font-bold tracking-wide uppercase font-sans antialiased',
 };
 
 // ============================================================================
@@ -284,7 +296,7 @@ export const conditionalClasses = (conditions) => {
 export const getGradientCard = (color, hover = false) => {
   const gradients = hover ? GRADIENT_COLORS_HOVER : GRADIENT_COLORS;
   const gradient = gradients[color] || gradients.blue;
-  return `bg-gradient-to-br ${gradient} backdrop-blur-sm p-6 rounded-xl border transition-all duration-300`;
+  return `bg-gradient-to-br ${gradient} backdrop-blur-sm p-6 rounded-xl border transition-all duration-300 overflow-hidden`;
 };
 
 /**
@@ -410,7 +422,7 @@ export const getStockAlertText = (stock) => {
 export const getKPICard = (color = 'blue', hover = true) => {
   const gradients = hover ? GRADIENT_COLORS_HOVER : GRADIENT_COLORS;
   const gradient = gradients[color] || gradients.blue;
-  return `bg-gradient-to-br ${gradient} backdrop-blur-sm p-5 rounded-xl border min-h-[200px] transition-all duration-300`;
+  return `bg-gradient-to-br ${gradient} backdrop-blur-sm p-5 rounded-xl border min-h-[200px] transition-all duration-300 overflow-hidden`;
 };
 
 // ============================================================================

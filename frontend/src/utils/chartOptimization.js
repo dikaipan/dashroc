@@ -116,6 +116,7 @@ export function optimizeChartConfig(chartConfig = {}, dataLength = 0) {
 
 /**
  * Throttles chart interaction handlers (hover, click) to reduce CPU usage
+ * Optimized to reduce work in RAF handler by deferring actual handler execution
  * 
  * @param {Function} handler - Event handler function
  * @param {number} limit - Minimum time between calls in milliseconds (default: 16ms ≈ 60fps)
@@ -124,23 +125,34 @@ export function optimizeChartConfig(chartConfig = {}, dataLength = 0) {
 export function throttleChartHandler(handler, limit = 16) {
   let inThrottle = false;
   let rafId = null;
+  let timeoutId = null;
+  let lastArgs = null;
 
   return function throttled(...args) {
+    lastArgs = args;
+    
     if (!inThrottle) {
       inThrottle = true;
 
-      // Use RAF for smooth updates at ~60fps
+      // Use RAF to schedule, but defer actual handler execution to setTimeout
+      // This reduces work in RAF handler to prevent violations
       rafId = requestAnimationFrame(() => {
-        handler(...args);
-        inThrottle = false;
+        // Defer handler execution to setTimeout to reduce RAF handler work
+        timeoutId = setTimeout(() => {
+          handler(...lastArgs);
+          inThrottle = false;
+          timeoutId = null;
+        }, 0);
       });
 
       // Fallback timeout if RAF doesn't fire
       setTimeout(() => {
         if (inThrottle) {
-          if (rafId) cancelAnimationFrame(rafId);
-          handler(...args);
+          if (rafId !== null) cancelAnimationFrame(rafId);
+          if (timeoutId !== null) clearTimeout(timeoutId);
+          handler(...lastArgs);
           inThrottle = false;
+          timeoutId = null;
         }
       }, limit);
     }

@@ -14,8 +14,7 @@ export function getDecisionCards(data) {
     topEngineersData,
     machinePerformanceData,
     regionalComparisonData,
-    distanceAnalysisData,
-    zoneOptimizationData
+    distanceAnalysisData
   } = data;
 
   return [
@@ -25,15 +24,15 @@ export function getDecisionCards(data) {
       icon: Users,
       color: 'blue',
       summary: `${topEngineersData.length} top engineers analyzed`,
-      metric: topEngineersData[0]?.performance || 0,
-      metricLabel: 'Best Score',
+      metric: topEngineersData[0]?.kpiAchievement?.toFixed(1) || topEngineersData[0]?.performance?.toFixed(1) || 0,
+      metricLabel: 'Best KPI Achievement %',
       chartType: 'radar',
       data: topEngineersData,
-      description: 'Analisis performa engineer berdasarkan pengalaman, training completion, skill level, dan jumlah mesin yang ditangani.',
+      description: 'Analisis performa engineer berdasarkan data assessment leveling (Total KPI Achievement, Total Score, Qualitative Score, dan jumlah mesin yang ditangani). Data diambil dari leveling.csv yang berisi hasil assessment engineer.',
       analysis: [
-        `Engineer terbaik: ${topEngineersData[0]?.name || 'N/A'} dengan score ${topEngineersData[0]?.performance || 0}`,
+        `Engineer terbaik: ${topEngineersData[0]?.name || 'N/A'} dengan Total KPI Achievement ${topEngineersData[0]?.kpiAchievement?.toFixed(2) || topEngineersData[0]?.performance?.toFixed(2) || 0}%`,
         `Rata-rata pengalaman: ${topEngineersData.length > 0 ? (topEngineersData.reduce((a, b) => a + b.experience, 0) / topEngineersData.length).toFixed(1) : 0} tahun`,
-        `${topEngineersData.filter(e => e.training === 100).length} dari ${topEngineersData.length} engineer sudah complete training`,
+        `Rata-rata Total KPI Achievement: ${topEngineersData.length > 0 ? (topEngineersData.reduce((a, b) => a + (b.kpiAchievement || b.performance || 0), 0) / topEngineersData.length).toFixed(2) : 0}%`,
       ],
       recommendations: [
         'Assign high-priority machines ke engineer dengan performance tertinggi',
@@ -87,46 +86,87 @@ export function getDecisionCards(data) {
     },
     {
       id: 'distance-analysis',
-      title: 'Engineer-Machine Distance',
+      title: 'Area Group - Machine Distance',
       icon: AlertTriangle,
       color: 'orange',
-      summary: `${distanceAnalysisData.length} engineers analyzed`,
-      metric: distanceAnalysisData[0]?.farZone || 0,
+      summary: `${distanceAnalysisData.length} area groups analyzed`,
+      metric: distanceAnalysisData.length > 0 
+        ? Math.max(...distanceAnalysisData.map(d => d.farZone || 0))
+        : 0,
       metricLabel: 'Most Far Zones',
       chartType: 'bar',
       data: distanceAnalysisData,
-      description: 'Analisis jarak antara lokasi engineer dengan mesin yang ditangani berdasarkan zona. Semakin tinggi zona, semakin jauh jaraknya. Optimal assignment adalah mesin di zona yang sama atau berdekatan.',
-      analysis: [
-        `Engineer dengan jarak terjauh: ${distanceAnalysisData[0]?.engineer || 'N/A'} (${distanceAnalysisData[0]?.farZone || 0} mesin zona jauh)`,
-        `Total ${distanceAnalysisData.reduce((a, b) => a + b.farZone, 0)} mesin ditangani engineer zona berbeda jauh`,
-        `${distanceAnalysisData.filter(e => e.farZone > 0).length} engineer handle mesin di luar zona mereka`
-      ],
+      description: 'Analisis distribusi zona dan distance mesin berdasarkan area group dari data_mesin.csv. Data zona (1, 2, 3, dll) dan distance (0-60km, 60-120km, >120km) digunakan untuk mengkategorikan mesin per area group. Optimal assignment adalah mesin di zona yang sama atau berdekatan dengan distance minimal.',
+      analysis: (() => {
+        if (!distanceAnalysisData || distanceAnalysisData.length === 0) {
+          return ['Tidak ada data untuk dianalisis'];
+        }
+        
+        const totalMachines = distanceAnalysisData.reduce((a, b) => a + b.total, 0);
+        const totalFarZone = distanceAnalysisData.reduce((a, b) => a + b.farZone, 0);
+        const totalDistance120kmPlus = distanceAnalysisData.reduce((a, b) => a + (b.distance120kmPlus || 0), 0);
+        const totalEngineers = distanceAnalysisData.reduce((a, b) => a + b.engineers, 0);
+        const totalSameZone = distanceAnalysisData.reduce((a, b) => a + (b.sameZone || 0), 0);
+        const totalNearZone = distanceAnalysisData.reduce((a, b) => a + (b.nearZone || 0), 0);
+        
+        // Find area group with most far zones
+        const areaGroupWithMostFarZones = distanceAnalysisData.reduce((max, current) => 
+          (current.farZone > (max?.farZone || 0)) ? current : max, null
+        );
+        
+        // Find area group with most distance >120km
+        const areaGroupWithMostDistance = distanceAnalysisData.reduce((max, current) => 
+          ((current.distance120kmPlus || 0) > (max?.distance120kmPlus || 0)) ? current : max, null
+        );
+        
+        // Calculate percentages safely
+        const farZonePercentage = totalMachines > 0 ? ((totalFarZone / totalMachines) * 100).toFixed(1) : '0.0';
+        const avgEngineersPerArea = distanceAnalysisData.length > 0 && totalEngineers > 0 
+          ? (totalEngineers / distanceAnalysisData.length).toFixed(1) 
+          : '0.0';
+        
+        const analysisItems = [];
+        
+        // Add summary
+        analysisItems.push(`Total ${totalMachines.toLocaleString()} mesin dianalisis dari ${distanceAnalysisData.length} area group`);
+        
+        // Add zone distribution
+        if (totalMachines > 0) {
+          analysisItems.push(`Distribusi zona: ${totalSameZone.toLocaleString()} mesin di zona sama (${((totalSameZone / totalMachines) * 100).toFixed(1)}%), ${totalNearZone.toLocaleString()} mesin di zona dekat (${((totalNearZone / totalMachines) * 100).toFixed(1)}%), ${totalFarZone.toLocaleString()} mesin di zona jauh (${farZonePercentage}%)`);
+        }
+        
+        // Add area group with most far zones
+        if (areaGroupWithMostFarZones && areaGroupWithMostFarZones.farZone > 0) {
+          analysisItems.push(`Area group dengan zona terjauh: ${areaGroupWithMostFarZones.areaGroup} (${areaGroupWithMostFarZones.farZone} mesin zona jauh, zona utama ${areaGroupWithMostFarZones.zone})`);
+        } else {
+          analysisItems.push('Tidak ada area group dengan mesin di zona jauh - semua mesin berada di zona yang sama atau berdekatan');
+        }
+        
+        // Add distance information
+        if (totalDistance120kmPlus > 0) {
+          if (areaGroupWithMostDistance && areaGroupWithMostDistance.distance120kmPlus > 0) {
+            analysisItems.push(`Total ${totalDistance120kmPlus.toLocaleString()} mesin dengan distance >120km (terbanyak di ${areaGroupWithMostDistance.areaGroup}: ${areaGroupWithMostDistance.distance120kmPlus || 0} mesin)`);
+          } else {
+            analysisItems.push(`Total ${totalDistance120kmPlus.toLocaleString()} mesin dengan distance >120km`);
+          }
+        } else {
+          analysisItems.push('Semua mesin berada dalam jarak ≤120km dari area group');
+        }
+        
+        // Add engineer information
+        if (totalEngineers > 0) {
+          analysisItems.push(`Total ${totalEngineers.toLocaleString()} engineer tersebar di ${distanceAnalysisData.length} area group (rata-rata ${avgEngineersPerArea} engineer per area group)`);
+        } else {
+          analysisItems.push(`Tidak ada engineer terdeteksi di ${distanceAnalysisData.length} area group`);
+        }
+        
+        return analysisItems;
+      })(),
       recommendations: [
-        'Reassign mesin di zona jauh ke engineer lokal yang lebih dekat',
-        'Prioritas immediate: engineer dengan >3 mesin di zona berbeda',
-        'Consider hiring engineer baru di zona dengan banyak mesin tanpa coverage lokal'
-      ]
-    },
-    {
-      id: 'zone-optimization',
-      title: 'Zone Coverage Optimization',
-      icon: TrendingUp,
-      color: 'yellow',
-      summary: `${zoneOptimizationData.length} zones mapped`,
-      metric: zoneOptimizationData[0]?.needsAttention || 0,
-      metricLabel: 'Priority Machines',
-      chartType: 'bar',
-      data: zoneOptimizationData,
-      description: 'Optimasi coverage engineer per zona berdasarkan jumlah mesin, engineer assigned, dan mesin yang butuh perhatian. Priority score dihitung dari rasio mesin critical per total mesin di zona.',
-      analysis: [
-        `Zona prioritas tertinggi: ${zoneOptimizationData[0]?.zone || 'N/A'} (${zoneOptimizationData[0]?.needsAttention || 0} mesin perlu attention)`,
-        `Ratio engineer:machine tertinggi: ${zoneOptimizationData.length > 0 ? Math.max(...zoneOptimizationData.map(z => parseFloat(z.ratio) || 0)).toFixed(1) : 0}`,
-        `Total ${zoneOptimizationData.reduce((a, b) => a + b.machines, 0)} mesin across ${zoneOptimizationData.length} zones`
-      ],
-      recommendations: [
-        'Deploy additional engineers ke zona dengan ratio >10 machines per engineer',
-        'Focus maintenance resources pada zona dengan high needsAttention count',
-        'Optimize travel routes untuk engineer yang cover multiple zones'
+        'Reassign mesin di zona jauh ke area group yang lebih dekat',
+        'Prioritas immediate: area group dengan >10 mesin di zona berbeda',
+        'Consider hiring engineer baru di area group dengan banyak mesin tanpa coverage lokal',
+        'Optimize zona assignment untuk mengurangi distance >120km'
       ]
     }
   ];

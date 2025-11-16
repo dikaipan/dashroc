@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from "react";
 import { useLocation } from 'react-router-dom';
 import { useEngineerData } from "../hooks/useEngineerData.js";
 import { useCrud } from "../hooks/useCrud.js";
@@ -8,15 +8,19 @@ import { useEngineerHandlers } from "../hooks/useEngineerHandlers.js";
 import { useEngineerExport } from "../hooks/useExport.js";
 import toast from 'react-hot-toast';
 import { Search, Maximize, Minimize, Edit, Trash2, X, Upload, Download, ChevronDown, ChevronRight, ChevronLeft, Hash, Home, User, MapPin, Calendar, Settings, AlertCircle, Info, Award, Briefcase } from "react-feather";
-import SkillProgress from "../components/charts/SkillProgress.jsx";
 import { parseExperience } from "../utils/textUtils.js";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import { SearchFilter, CustomAlert, CustomConfirm } from "../components/common";
 import { getKPICard, TEXT_STYLES, cn } from '../constants/styles';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
 import InlineLoadingSpinner from '../components/common/InlineLoadingSpinner';
+// Lazy load heavy components for better code splitting
+const EngineerInsightModal = lazy(() => import('../components/engineers/EngineerInsightModal.jsx'));
+const EngineerTrainingDetail = lazy(() => import('../components/charts/EngineerTrainingDetail.jsx'));
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function Engineers() {
+  const { isDark } = useTheme();
   const location = useLocation();
   const selectedEngineer = location.state?.selectedEngineer;
   const { rows: engineers, loading } = useEngineerData();
@@ -25,8 +29,8 @@ export default function Engineers() {
     primaryKey: 'id',
     eventName: 'engineerDataChanged'
   });
-  const { handleExport, isExporting } = useEngineerExport();
   
+  // State declarations
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("experience"); // experience, region, vendor, area_group
   const [sortValue, setSortValue] = useState(""); // Value untuk dropdown dinamis
@@ -35,6 +39,9 @@ export default function Engineers() {
   const [uploadingCSV, setUploadingCSV] = useState(false); // CSV upload state
   const [expandedRows, setExpandedRows] = useState(new Set()); // For expandable rows
   const [visibleColumns, setVisibleColumns] = useState(new Set(['id', 'name', 'region', 'area_group', 'vendor', 'years_experience'])); // Default visible columns
+  const [activeInsight, setActiveInsight] = useState(null); // 'total-engineers', 'experience', 'training' - State for insight modal
+  const [currentPage, setCurrentPage] = useState(1); // Pagination state
+  const [itemsPerPage, setItemsPerPage] = useState(10); // Items per page
   
   // Handle ESC key to close fullscreen
   useEffect(() => {
@@ -50,13 +57,27 @@ export default function Engineers() {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isFullscreen]);
   
-  // Get all unique fields from engineers data
+  // Get all unique fields from engineers data (filter out unnamed/empty columns)
   const allEngineerFields = useMemo(() => {
     if (!engineers || engineers.length === 0) return [];
     const fieldsSet = new Set();
     engineers.forEach(eng => {
       Object.keys(eng).forEach(key => {
-        fieldsSet.add(key);
+        // Filter out unnamed columns, empty string keys, and columns that are all empty
+        const normalizedKey = key ? key.trim().toLowerCase() : '';
+        if (key && 
+            key.trim() !== '' && 
+            !normalizedKey.startsWith('unnamed') &&
+            normalizedKey !== '') {
+          // Check if this column has any non-empty values across all engineers
+          const hasData = engineers.some(e => {
+            const val = e[key];
+            return val !== null && val !== undefined && String(val).trim() !== '';
+          });
+          if (hasData) {
+            fieldsSet.add(key);
+          }
+        }
       });
     });
     return Array.from(fieldsSet).sort();
@@ -122,8 +143,8 @@ export default function Engineers() {
     if (field.includes('vendor')) return <Briefcase size={16} className="text-purple-400" />;
     if (field.includes('experience') || field.includes('year')) return <Calendar size={16} className="text-cyan-400" />;
     if (field.includes('skill') || field.includes('training')) return <Award size={16} className="text-yellow-400" />;
-    return <Info size={16} className="text-slate-400" />;
-  }, []);
+    return <Info size={16} className={isDark ? "text-slate-400" : "text-gray-500"} />;
+  }, [isDark]);
 
   // Helper function to get field placeholder
   const getFieldPlaceholder = useCallback((field) => {
@@ -298,7 +319,7 @@ export default function Engineers() {
     return groups;
   }, [allEngineerFields]);
 
-  // Use custom hooks for business logic
+  // Use custom hooks for business logic (after state declarations)
   const filteredEngineers = useEngineerFilters(engineers, { searchTerm, sortBy, sortValue });
   const kpis = useEngineerKPIs(filteredEngineers, engineers);
   const handlers = useEngineerHandlers({
@@ -318,6 +339,7 @@ export default function Engineers() {
   const { alert, confirm } = handlers;
 
   // Export is now handled by useEngineerExport hook
+  const { handleExport, isExporting } = useEngineerExport(() => filteredEngineers);
 
   // Wrapper handlers for UI
   const handleEdit = (engineer) => {
@@ -382,9 +404,10 @@ export default function Engineers() {
     }
   };
 
-  // Reset selection when filters change
+  // Reset selection and page when filters change
   useEffect(() => {
     setSelectedEngineers([]);
+    setCurrentPage(1);
   }, [searchTerm, sortBy, sortValue]);
 
   // Only show full-screen loading on initial load, not during background refresh
@@ -394,7 +417,10 @@ export default function Engineers() {
   
   if (isInitialLoad && !hasActiveModal) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className={cn(
+        "flex items-center justify-center h-screen",
+        isDark ? "bg-slate-900" : "bg-gray-50"
+      )}>
         <LoadingSkeleton type="spinner" message="Memuat data engineer..." size="lg" />
       </div>
     );
@@ -405,9 +431,21 @@ export default function Engineers() {
     totalEngineers, 
     totalAllEngineers, 
     percentageOfTotal, 
-    avgExperience, 
-    completedTraining, 
-    trainingCompletionRate 
+    avgExperience,
+    minExperience,
+    maxExperience,
+    medianExperience,
+    juniorCount,
+    midLevelCount,
+    seniorCount,
+    completedTraining,
+    onlyTechnical,
+    onlySoftSkills,
+    noTraining,
+    trainingCompletionRate,
+    regionStats,
+    topVendors,
+    insights
   } = kpis;
 
 
@@ -416,82 +454,459 @@ export default function Engineers() {
       title="Engineers Management"
     >
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total Engineers */}
-        <div className={getKPICard('blue', true)}>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className={TEXT_STYLES.kpiTitle}>Total Engineers</p>
-              <div className="flex items-baseline gap-2">
-                <h3 className={TEXT_STYLES.kpiValue}>{totalEngineers}</h3>
-                <span className={TEXT_STYLES.kpiSubtitle}>/ {totalAllEngineers}</span>
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
-                    style={{ width: `${percentageOfTotal}%` }}
-                  ></div>
-                </div>
-                <span className="text-xs text-blue-400 font-semibold">{percentageOfTotal.toFixed(0)}%</span>
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-              <span className="text-2xl">👷</span>
-            </div>
-          </div>
-        </div>
+      {/* Training Progress Detail with KPI Cards */}
+      <div className="mt-6">
+        <Suspense fallback={<LoadingSkeleton type="spinner" message="Memuat detail training..." />}>
+          <EngineerTrainingDetail engineers={engineers} kpis={kpis} />
+        </Suspense>
+      </div>
 
-        {/* Average Experience */}
-        <div className={getKPICard('green', true)}>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className={TEXT_STYLES.kpiTitle}>Avg Experience</p>
-              <div className="flex items-baseline gap-2">
-                <h3 className={TEXT_STYLES.kpiValue}>{avgExperience.toFixed(1)}</h3>
-                <span className={TEXT_STYLES.kpiSubtitle}>years</span>
-              </div>
-              <div className="mt-3">
-                <div className="flex items-center gap-2">
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    avgExperience >= 4 ? 'bg-green-500/20 text-green-400' : 
-                    avgExperience >= 2 ? 'bg-yellow-500/20 text-yellow-400' : 
-                    'bg-red-500/20 text-red-400'
-                  }`}>
-                    {avgExperience >= 4 ? 'Senior Team' : avgExperience >= 2 ? 'Mid-Level' : 'Junior Team'}
+      {/* Toolbar with Actions */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 mt-6">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => {
+              setModalMode("create");
+              setFormData(createInitialFormData());
+              setShowModal(true);
+            }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <span>+</span> Tambah Engineer
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={filteredEngineers.length === 0 || isExporting}
+            className={cn(
+              "px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2",
+              isDark ? "disabled:bg-slate-600" : "disabled:bg-gray-400"
+            )}
+            title={filteredEngineers.length === 0 ? "Tidak ada data untuk diekspor" : "Export data ke CSV"}
+          >
+            {isExporting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Exporting...</span>
+              </>
+            ) : (
+              <>
+                <Download size={16} />
+                <span>Export CSV</span>
+              </>
+            )}
+          </button>
+          <label className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer">
+            <Upload size={16} />
+            <span>Import CSV</span>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleUploadCSV}
+              disabled={uploadingCSV}
+              className="hidden"
+            />
+          </label>
+          {uploadingCSV && (
+            <div className={cn(
+              "flex items-center gap-2 text-sm",
+              isDark ? "text-slate-400" : "text-gray-600"
+            )}>
+              <div className={cn(
+                "w-4 h-4 border-2 border-t-transparent rounded-full animate-spin",
+                isDark ? "border-slate-400" : "border-gray-400"
+              )}></div>
+              <span>Uploading...</span>
+            </div>
+          )}
+        </div>
+        <div className="w-full sm:w-auto">
+          <SearchFilter
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Cari engineer..."
+          />
+        </div>
+      </div>
+
+      {/* Engineers Table - Beautiful & Scrollable */}
+      <div className={cn(
+        "rounded-xl border shadow-2xl overflow-hidden backdrop-blur-sm",
+        isDark 
+          ? "bg-gradient-to-br from-slate-800/90 via-slate-800/80 to-slate-900/90 border-slate-700/50"
+          : "bg-white border-gray-200"
+      )}>
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <table className="w-full min-w-[800px]">
+            <thead className={cn(
+              "sticky top-0 z-20 backdrop-blur-md border-b-2 shadow-lg",
+              isDark
+                ? "bg-gradient-to-b from-slate-700/95 to-slate-800/95 border-slate-600/50"
+                : "bg-gradient-to-b from-gray-100 to-gray-50 border-gray-300"
+            )}>
+              <tr>
+                <th className={cn(
+                  "px-4 py-4 text-left text-xs font-bold uppercase tracking-wider sticky left-0 z-30",
+                  isDark
+                    ? "text-slate-200 bg-slate-700/80"
+                    : "text-gray-800 bg-gray-100"
+                )}>
+                    <input
+                      type="checkbox"
+                      checked={selectedEngineers.length === filteredEngineers.length && filteredEngineers.length > 0}
+                      onChange={handleSelectAll}
+                      className={cn(
+                        "rounded text-blue-500 focus:ring-2 focus:ring-blue-400 cursor-pointer transition-all hover:scale-110",
+                        isDark
+                          ? "border-slate-500 bg-slate-600"
+                          : "border-gray-400 bg-white"
+                      )}
+                    />
+                </th>
+                {allEngineerFields.map((field) => {
+                  if (!visibleColumns.has(field)) return null;
+                  const fieldLabel = field.split('_').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1)
+                  ).join(' ');
+                  return (
+                    <th
+                      key={field}
+                      className={cn(
+                        "px-4 py-4 text-left text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors",
+                        isDark
+                          ? "text-slate-200 hover:bg-slate-600/50"
+                          : "text-gray-800 hover:bg-gray-200"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{fieldLabel}</span>
+                      </div>
+                    </th>
+                  );
+                })}
+                <th className={cn(
+                  "px-4 py-4 text-left text-xs font-bold uppercase tracking-wider sticky right-0 z-20 backdrop-blur-md",
+                  isDark
+                    ? "text-slate-200 bg-gradient-to-l from-slate-700/95 to-slate-800/95"
+                    : "text-gray-800 bg-gradient-to-l from-gray-100 to-gray-50"
+                )}>
+                  <div className="flex items-center gap-2">
+                    <span>Actions</span>
                   </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody className={cn(
+              "divide-y",
+              isDark ? "divide-slate-700/50" : "divide-gray-200"
+            )}>
+              {(() => {
+                // Pagination calculation
+                const totalItems = filteredEngineers.length;
+                const totalPages = Math.ceil(totalItems / itemsPerPage);
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const paginatedEngineers = filteredEngineers.slice(startIndex, endIndex);
+                
+                if (paginatedEngineers.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={allEngineerFields.filter(f => visibleColumns.has(f)).length + 2} className="px-4 py-12 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className={cn(
+                            "w-16 h-16 rounded-full flex items-center justify-center",
+                            isDark ? "bg-slate-700/50" : "bg-gray-100"
+                          )}>
+                            <User size={32} className={isDark ? "text-slate-500" : "text-gray-400"} />
+                          </div>
+                          <p className={cn(
+                            "font-medium",
+                            isDark ? "text-slate-400" : "text-gray-600"
+                          )}>
+                            {searchTerm ? 'No engineers found matching your search' : 'No engineers data available'}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                
+                return paginatedEngineers.map((engineer, idx) => (
+                  <tr
+                    key={engineer.id}
+                    className={cn(
+                      "group transition-all duration-200 border-b",
+                      isDark
+                        ? "hover:bg-gradient-to-r hover:from-blue-500/10 hover:via-slate-700/30 hover:to-slate-700/20 border-slate-700/30"
+                        : "hover:bg-gradient-to-r hover:from-blue-50 hover:via-gray-50 hover:to-gray-50 border-gray-200"
+                    )}
+                  >
+                    <td className={cn(
+                      "px-4 py-4 whitespace-nowrap sticky left-0 z-10 transition-colors",
+                      isDark
+                        ? "bg-slate-800/80 group-hover:bg-slate-700/50"
+                        : "bg-white group-hover:bg-gray-50"
+                    )}>
+                      <input
+                        type="checkbox"
+                        checked={selectedEngineers.includes(engineer.id)}
+                        onChange={() => handleSelectOne(engineer.id)}
+                        className={cn(
+                          "rounded text-blue-500 focus:ring-2 focus:ring-blue-400 cursor-pointer transition-all hover:scale-110",
+                          isDark
+                            ? "border-slate-500 bg-slate-700"
+                            : "border-gray-400 bg-white"
+                        )}
+                      />
+                    </td>
+                    {allEngineerFields.map((field) => {
+                      if (!visibleColumns.has(field)) return null;
+                      const value = engineer[field];
+                      const displayValue = value !== null && value !== undefined ? String(value) : '-';
+                      const isEmpty = !value || String(value).trim() === '';
+                      
+                      return (
+                        <td
+                          key={field}
+                          className={cn(
+                            "px-4 py-4 text-sm whitespace-nowrap transition-colors",
+                            isEmpty
+                              ? isDark ? "text-slate-500 italic" : "text-gray-400 italic"
+                              : isDark ? "text-slate-200 group-hover:text-slate-100" : "text-gray-800 group-hover:text-gray-900"
+                          )}
+                        >
+                          {displayValue.length > 50 ? (
+                            <div className="flex items-center gap-2">
+                              <span title={displayValue} className="truncate block max-w-xs">
+                                {displayValue.substring(0, 50)}...
+                              </span>
+                              <span className={cn(
+                                "text-xs opacity-0 group-hover:opacity-100 transition-opacity",
+                                isDark ? "text-slate-500" : "text-gray-500"
+                              )}>
+                                {displayValue.length} chars
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="block">{displayValue}</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td className={cn(
+                      "px-4 py-4 whitespace-nowrap sticky right-0 z-10 transition-all",
+                      isDark
+                        ? "bg-gradient-to-l from-slate-800/95 via-slate-800/90 to-slate-800/95 group-hover:from-slate-700/95 group-hover:via-slate-700/90 group-hover:to-slate-700/95"
+                        : "bg-gradient-to-l from-white via-white to-white group-hover:from-gray-50 group-hover:via-gray-50 group-hover:to-gray-50"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEdit(engineer)}
+                          className="p-2 text-blue-400 hover:text-blue-200 hover:bg-blue-500/20 rounded-lg transition-all duration-200 hover:scale-110 hover:shadow-lg hover:shadow-blue-500/20"
+                          title="Edit"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(engineer)}
+                          className="p-2 text-red-400 hover:text-red-200 hover:bg-red-500/20 rounded-lg transition-all duration-200 hover:scale-110 hover:shadow-lg hover:shadow-red-500/20"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ));
+              })()}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Pagination Controls */}
+        {(() => {
+          const totalItems = filteredEngineers.length;
+          const totalPages = Math.ceil(totalItems / itemsPerPage);
+          const startIndex = (currentPage - 1) * itemsPerPage;
+          const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+          
+          if (totalPages <= 1) return null;
+          
+          return (
+            <div className={cn(
+              "flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t-2 backdrop-blur-sm",
+              isDark
+                ? "border-slate-700/50 bg-gradient-to-r from-slate-800/90 via-slate-700/80 to-slate-800/90"
+                : "border-gray-200 bg-gradient-to-r from-gray-50 via-white to-gray-50"
+            )}>
+              <div className={cn(
+                "text-sm",
+                isDark ? "text-slate-300" : "text-gray-700"
+              )}>
+                Showing <span className={cn("font-bold", isDark ? "text-blue-400" : "text-blue-600")}>{startIndex + 1}</span> to{' '}
+                <span className={cn("font-bold", isDark ? "text-blue-400" : "text-blue-600")}>{endIndex}</span> of{' '}
+                <span className={cn("font-bold", isDark ? "text-emerald-400" : "text-emerald-600")}>{totalItems}</span> engineers
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {/* Items per page selector */}
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all cursor-pointer",
+                    isDark
+                      ? "bg-slate-700/80 border-slate-600/50 text-slate-200 hover:bg-slate-600/80"
+                      : "bg-white border-gray-300 text-gray-800 hover:bg-gray-50"
+                  )}
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={25}>25 per page</option>
+                  <option value={50}>50 per page</option>
+                  <option value={100}>100 per page</option>
+                </select>
+                
+                {/* Previous Button */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className={cn(
+                    "p-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 border",
+                    isDark
+                      ? "bg-slate-700/80 hover:bg-slate-600/80 border-slate-600/50"
+                      : "bg-white hover:bg-gray-100 border-gray-300"
+                  )}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={16} className={isDark ? "text-slate-200" : "text-gray-800"} />
+                </button>
+                
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let page;
+                    if (totalPages <= 5) {
+                      page = i + 1;
+                    } else if (currentPage <= 3) {
+                      page = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      page = totalPages - 4 + i;
+                    } else {
+                      page = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-w-[36px]",
+                          currentPage === page
+                            ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30 scale-105"
+                            : isDark
+                            ? "bg-slate-700/80 text-slate-300 hover:bg-slate-600/80 hover:text-white hover:scale-105"
+                            : "bg-white text-gray-700 hover:bg-gray-100 hover:scale-105 border border-gray-300"
+                        )}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
                 </div>
+                
+                {/* Next Button */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className={cn(
+                    "p-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 border",
+                    isDark
+                      ? "bg-slate-700/80 hover:bg-slate-600/80 border-slate-600/50"
+                      : "bg-white hover:bg-gray-100 border-gray-300"
+                  )}
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={16} className={isDark ? "text-slate-200" : "text-gray-800"} />
+                </button>
               </div>
             </div>
-            <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
-              <span className="text-2xl">⭐</span>
-            </div>
+          );
+        })()}
+      </div>
+
+      {/* Column Visibility Toggle */}
+      <div className={cn(
+        "mt-4 p-4 rounded-lg border",
+        isDark
+          ? "bg-slate-800 border-slate-700"
+          : "bg-white border-gray-200"
+      )}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className={cn(
+            "text-sm font-semibold",
+            isDark ? "text-slate-300" : "text-gray-800"
+          )}>Visible Columns</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setVisibleColumns(new Set(allEngineerFields))}
+              className="text-xs text-blue-400 hover:text-blue-300"
+            >
+              Show All
+            </button>
+            <button
+              onClick={() => setVisibleColumns(new Set(['id', 'name', 'region', 'area_group', 'vendor', 'years_experience']))}
+              className={cn(
+                "text-xs",
+                isDark ? "text-slate-400 hover:text-slate-300" : "text-gray-600 hover:text-gray-800"
+              )}
+            >
+              Reset
+            </button>
           </div>
         </div>
-
-        {/* Training Completion */}
-        <div className={getKPICard('purple', true)}>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className={TEXT_STYLES.kpiTitle}>Training Completion</p>
-              <div className="flex items-baseline gap-2">
-                <h3 className={TEXT_STYLES.kpiValue}>{trainingCompletionRate.toFixed(0)}%</h3>
-              </div>
-              <div className={cn('mt-3 flex items-center gap-2', TEXT_STYLES.kpiSubtitle)}>
-                <span>{completedTraining} of {totalEngineers} completed</span>
-              </div>
-              <div className="mt-2 flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-purple-500 to-purple-400 transition-all duration-500"
-                  style={{ width: `${trainingCompletionRate}%` }}
-                ></div>
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
-              <span className="text-2xl">📚</span>
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-2">
+          {allEngineerFields.map((field) => {
+            const fieldLabel = field.split('_').map(word => 
+              word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ');
+            return (
+              <label
+                key={field}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors",
+                  isDark
+                    ? "bg-slate-700/50 hover:bg-slate-700"
+                    : "bg-gray-100 hover:bg-gray-200"
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={visibleColumns.has(field)}
+                  onChange={(e) => {
+                    const newSet = new Set(visibleColumns);
+                    if (e.target.checked) {
+                      newSet.add(field);
+                    } else {
+                      newSet.delete(field);
+                    }
+                    setVisibleColumns(newSet);
+                  }}
+                  className={cn(
+                    "rounded text-blue-600 focus:ring-blue-500",
+                    isDark
+                      ? "border-slate-600 bg-slate-700"
+                      : "border-gray-400 bg-white"
+                  )}
+                />
+                <span className={cn(
+                  "text-xs",
+                  isDark ? "text-slate-300" : "text-gray-800"
+                )}>{fieldLabel}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
 
@@ -504,395 +919,6 @@ export default function Engineers() {
           >
             <Trash2 size={16} /> Hapus ({selectedEngineers.length})
           </button>
-        </div>
-      )}
-
-      {/* Sort By Section */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <span className="text-slate-400 text-sm font-medium"></span>
-        
-        {/* Category Buttons */}
-        <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => { setSortBy("experience"); setSortValue(""); }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  sortBy === "experience"
-                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-                }`}
-              >
-                Experience
-              </button>
-              <button
-                onClick={() => { setSortBy("region"); setSortValue(""); }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  sortBy === "region"
-                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-                }`}
-              >
-                Region
-              </button>
-              <button
-                onClick={() => { setSortBy("vendor"); setSortValue(""); }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  sortBy === "vendor"
-                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-                }`}
-              >
-                Vendor
-              </button>
-              <button
-                onClick={() => { setSortBy("area_group"); setSortValue(""); }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  sortBy === "area_group"
-                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-                }`}
-              >
-                Area Group
-              </button>
-            </div>
-
-            {/* Dynamic Dropdown - hanya muncul untuk non-experience */}
-            {sortBy !== "experience" && (
-              <select
-                value={sortValue}
-                onChange={(e) => setSortValue(e.target.value)}
-                className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500 min-w-[200px]"
-              >
-                <option value="">All {sortBy === "region" ? "Regions" : sortBy === "vendor" ? "Vendors" : "Area Groups"}</option>
-                {sortBy === "region" && (
-                  <>
-                    <option value="Region 1">Region 1</option>
-                    <option value="Region 2">Region 2</option>
-                    <option value="Region 3">Region 3</option>
-                  </>
-                )}
-                {sortBy === "vendor" && (
-                  [...new Set(engineers.map(e => e.vendor).filter(Boolean))].sort().map(vendor => (
-                    <option key={vendor} value={vendor}>{vendor}</option>
-                  ))
-                )}
-                {sortBy === "area_group" && (
-                  [...new Set(engineers.map(e => e.area_group).filter(Boolean))].sort().map(areaGroup => (
-                    <option key={areaGroup} value={areaGroup}>{areaGroup}</option>
-                  ))
-                )}
-              </select>
-            )}
-      </div>
-
-      {/* Table & Training Progress Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Table - Left Side (Larger) */}
-        <div className={isFullscreen ? "fixed inset-0 z-50 p-6 bg-slate-900" : "lg:col-span-8"}>
-          <div className={`bg-slate-800 rounded-lg overflow-hidden border border-slate-700 flex flex-col ${
-            isFullscreen ? 'h-full' : 'max-h-[600px]'
-          }`}>
-            {/* Table Header with Search & Actions */}
-            <div className="px-4 py-3 bg-slate-900 border-b border-slate-700 space-y-3 relative">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-100">Data Engineer</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{filteredEngineers.length} dari {engineers.length} engineer</p>
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                  <button
-                    onClick={() => {
-                      setModalMode("create");
-                      setSelectedEngineerForEdit(null);
-                      const freshForm = createInitialFormData();
-                      setFormData(freshForm);
-                      setShowModal(true);
-                    }}
-                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1 sm:gap-1.5"
-                  >
-                    <span className="text-xs sm:text-sm">+</span> <span className="hidden sm:inline">Tambah</span> <span className="sm:hidden">+</span>
-                  </button>
-                  <button
-                    onClick={() => handleExport(filteredEngineers, null, 'engineer')}
-                    disabled={filteredEngineers.length === 0 || isExporting}
-                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1 sm:gap-1.5"
-                    title={filteredEngineers.length === 0 ? "Tidak ada data untuk diekspor" : "Export data ke CSV"}
-                  >
-                    {isExporting ? (
-                      <>
-                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span className="hidden sm:inline">Exporting...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Download size={12} className="sm:w-3.5 sm:h-3.5" />
-                        <span className="hidden sm:inline">Export CSV</span>
-                      </>
-                    )}
-                  </button>
-                  <label className="px-2 sm:px-3 py-1 sm:py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1 sm:gap-1.5 cursor-pointer">
-                    <Upload size={12} className="sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">{uploadingCSV ? 'Uploading...' : 'Upload CSV'}</span>
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={handleUploadCSV}
-                      className="hidden"
-                      disabled={uploadingCSV}
-                    />
-                  </label>
-                  <button
-                    onClick={() => setIsFullscreen(!isFullscreen)}
-                    className="px-2 sm:px-3 py-1 sm:py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1 sm:gap-1.5"
-                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                  >
-                    {isFullscreen ? <Minimize size={12} className="sm:w-3.5 sm:h-3.5" /> : <Maximize size={12} className="sm:w-3.5 sm:h-3.5" />}
-                  </button>
-                </div>
-              </div>
-              
-              {/* Search Bar */}
-              <div className="w-full">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-                  <input
-                    type="text"
-                    placeholder="Search engineers..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                    aria-label="Search engineers"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex-1 overflow-x-auto overflow-y-auto">
-              <table className="w-full min-w-[800px]">
-                <thead className="bg-slate-900/95 backdrop-blur-sm sticky top-0 z-10">
-                  <tr>
-                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider w-12 border-b border-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={selectedEngineers.length === filteredEngineers.length && filteredEngineers.length > 0}
-                        onChange={handleSelectAll}
-                        className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-slate-800 cursor-pointer"
-                        aria-label="Select all engineers"
-                      />
-                    </th>
-                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-48 border-b border-slate-700">
-                      Name
-                    </th>
-                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-32 border-b border-slate-700">
-                      Region
-                    </th>
-                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-40 border-b border-slate-700">
-                      Area Group
-                    </th>
-                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-32 border-b border-slate-700">
-                      Vendor
-                    </th>
-                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-24 border-b border-slate-700">
-                      Exp
-                    </th>
-                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs font-semibold text-slate-300 uppercase tracking-wider w-40 border-b border-slate-700">
-                      Skills
-                    </th>
-                    <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-center text-xs font-semibold text-slate-300 uppercase tracking-wider w-24 border-b border-slate-700">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-700/50">
-                  {filteredEngineers.length > 0 ? (
-                    filteredEngineers.map((engineer, idx) => {
-                      const isExpanded = expandedRows.has(engineer.id);
-                      return (
-                        <React.Fragment key={idx}>
-                          <tr className={`hover:bg-slate-700/40 transition-colors ${
-                            idx % 2 === 0 ? 'bg-slate-800/50' : 'bg-slate-800/30'
-                          }`}>
-                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-center whitespace-nowrap w-12">
-                              <input
-                                type="checkbox"
-                                checked={selectedEngineers.includes(engineer.id)}
-                                onChange={() => handleSelectOne(engineer.id)}
-                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-slate-800 cursor-pointer"
-                                aria-label={`Select engineer ${engineer.id}`}
-                              />
-                            </td>
-                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap w-48">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => toggleRow(engineer.id)}
-                                  className="text-slate-400 hover:text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  aria-label={isExpanded ? "Collapse row" : "Expand row"}
-                                >
-                                  {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                </button>
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                                  {engineer.name?.charAt(0) || "?"}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-xs sm:text-sm font-medium text-slate-100 truncate">{engineer.name || "-"}</div>
-                                  <div className="text-xs text-slate-400 truncate">{engineer.id || "-"}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap w-32">
-                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                                {engineer.region || "-"}
-                              </span>
-                            </td>
-                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-slate-300 w-40 truncate" title={engineer.area_group || "-"}>
-                              {engineer.area_group || "-"}
-                            </td>
-                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-slate-300 w-32 truncate" title={engineer.vendor || "-"}>
-                              {engineer.vendor || "-"}
-                            </td>
-                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap w-24">
-                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-green-500/20 text-green-400 border border-green-500/30">
-                                {engineer.years_experience || "0"}
-                              </span>
-                            </td>
-                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 w-40">
-                              <div className="flex flex-wrap gap-1">
-                                {(() => {
-                                  const skillsStr = engineer.technical_skills_training || "";
-                                  const skills = skillsStr.split(',').map(s => s.trim()).filter(Boolean);
-                                  
-                                  if (skills.length === 0) {
-                                    return <span className="text-xs text-slate-500">No skills</span>;
-                                  }
-                                  
-                                  return (
-                                    <>
-                                      {skills.slice(0, 2).map((skill, i) => (
-                                        <span
-                                          key={i}
-                                          className="px-2 py-0.5 text-xs rounded bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                                        >
-                                          {skill.replace('Training ', '')}
-                                        </span>
-                                      ))}
-                                      {skills.length > 2 && (
-                                        <span className="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-400 border border-slate-600">
-                                          +{skills.length - 2}
-                                        </span>
-                                      )}
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            </td>
-                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap w-24">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <button
-                                  onClick={() => handleEdit(engineer)}
-                                  className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  title="Edit"
-                                  aria-label={`Edit engineer ${engineer.id}`}
-                                >
-                                  <Edit size={14} />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(engineer)}
-                                  className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
-                                  title="Delete"
-                                  aria-label={`Delete engineer ${engineer.id}`}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                          {isExpanded && (
-                            <tr className={`${idx % 2 === 0 ? 'bg-slate-800/50' : 'bg-slate-800/30'}`}>
-                              <td colSpan={8} className="px-4 py-3">
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
-                                  {allEngineerFields.filter(f => !['id', 'name', 'region', 'area_group', 'vendor', 'years_experience', 'technical_skills_training', 'soft_skills_training'].includes(f)).map(field => {
-                                    const value = engineer[field] || '-';
-                                    const fieldLabel = field.split('_').map(word => 
-                                      word.charAt(0).toUpperCase() + word.slice(1)
-                                    ).join(' ');
-                                    return (
-                                      <div key={field} className="border-b border-slate-700/50 pb-2">
-                                        <div className="text-slate-400 font-medium mb-1">{fieldLabel}</div>
-                                        <div className="text-slate-200">{value}</div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan="8" className="px-4 py-12 text-center">
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="text-5xl">📭</div>
-                          <div>
-                            <p className="text-sm font-semibold text-slate-200 mb-1">Tidak ada engineer ditemukan</p>
-                            <p className="text-xs text-slate-400">Coba ubah filter atau hapus beberapa filter untuk melihat hasil</p>
-                          </div>
-                          {(sortBy || sortValue || searchTerm) && (
-                            <button
-                              onClick={() => {
-                                setSortBy("experience");
-                                setSortValue("");
-                                setSearchTerm("");
-                              }}
-                              className="mt-2 px-4 py-2 text-xs font-medium text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
-                            >
-                              Hapus Semua Filter
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* Training Skill Progress - Right Side - Modern Design */}
-        <div className="lg:col-span-4">
-          <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 p-5 rounded-xl border border-slate-700/50 relative min-h-[400px] max-h-[600px] flex flex-col shadow-lg">
-            <div className="flex justify-between items-center mb-4 flex-shrink-0">
-              <div>
-                <h2 className="text-lg font-bold text-slate-100 mb-1">Training Skill Progress</h2>
-                <p className="text-xs text-slate-400">{filteredEngineers.length} engineers</p>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800/50">
-              {filteredEngineers.length > 0 ? (
-                filteredEngineers.map((engineer, idx) => (
-                  <SkillProgress key={idx} engineer={engineer} />
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-slate-500">
-                  <div className="w-16 h-16 rounded-full bg-slate-700/30 flex items-center justify-center mb-3">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-medium">No engineers data available</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-     
-      {/* Empty State */}
-      {filteredEngineers.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">👷</div>
-          <h3 className="text-xl font-semibold text-slate-300 mb-2">Engineer Tidak Ditemukan</h3>
-          <p className="text-slate-400">Coba sesuaikan filter atau kata kunci pencarian Anda</p>
         </div>
       )}
 
@@ -1235,6 +1261,18 @@ export default function Engineers() {
 
       {/* Inline Loading Spinner - Shows during CRUD operations */}
       {crudLoading && <InlineLoadingSpinner size="md" message="Memproses..." />}
+
+      {/* Engineer Insight Modal */}
+      {activeInsight && (
+        <Suspense fallback={null}>
+          <EngineerInsightModal
+            insightType={activeInsight}
+            onClose={() => setActiveInsight(null)}
+            kpis={kpis}
+            insights={insights}
+          />
+        </Suspense>
+      )}
     </PageLayout>
   );
 }

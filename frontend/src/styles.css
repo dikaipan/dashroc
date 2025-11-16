@@ -328,12 +328,14 @@ html.light-theme .sidebar-footer {
 /* Light theme leaflet popup */
 html.light-theme .leaflet-popup-content-wrapper {
   background: #ffffff !important;
-  border-color: #e2e8f0 !important;
+  border: none !important;
 }
 
 html.light-theme .leaflet-popup-tip {
   background: #ffffff !important;
-  border-color: #e2e8f0 !important;
+  border: none !important;
+  margin-top: -1px !important;
+  z-index: 1 !important;
 }
 
 html.light-theme .leaflet-popup-close-button {
@@ -727,33 +729,114 @@ div[style*="z-index: 50"] {
   border-radius: 14px !important;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3) !important;
   padding: 0 !important;
-  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  padding-bottom: 0 !important;
+  border: none !important;
+  position: relative !important;
+  overflow: hidden !important;
+  margin-bottom: 0 !important;
 }
 
 .leaflet-popup-content {
   margin: 0 !important;
   width: auto !important;
+  position: relative !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
 }
 
 .leaflet-popup-tip {
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
-  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  border: none !important;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+  margin-top: -1px !important;
+  margin-bottom: 0 !important;
+  z-index: 2 !important;
+  position: relative !important;
 }
 
 .leaflet-popup-close-button {
   color: #94a3b8 !important;
-  font-size: 20px !important;
-  padding: 8px 12px !important;
+  font-size: 18px !important;
+  padding: 4px 8px !important;
   font-weight: bold !important;
   transition: all 0.2s ease !important;
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 24px !important;
+  height: 24px !important;
+  line-height: 20px !important;
+  text-align: center !important;
+  z-index: 1000 !important;
 }
 
 .leaflet-popup-close-button:hover {
   color: #ef4444 !important;
   transform: scale(1.1) !important;
   background: rgba(239, 68, 68, 0.1) !important;
-  border-radius: 6px !important;
+  border-radius: 4px !important;
+}
+
+/* Custom Popup Styling - Enhanced for better readability */
+.custom-popup .leaflet-popup-content-wrapper {
+  background: transparent !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 12px !important;
+  padding: 0 !important;
+  padding-bottom: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+  margin-bottom: 0 !important;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0 !important;
+  padding: 0 !important;
+  padding-bottom: 8px !important;
+  position: relative !important;
+}
+
+/* Marker Hover Effects - Enhanced visibility */
+.leaflet-marker-icon:hover {
+  z-index: 1000 !important;
+}
+
+/* Pin Hover */
+.marker-pin:hover {
+  transform: scale(1.6) translateY(-3px) !important;
+  filter: drop-shadow(0 6px 12px rgba(59, 130, 246, 0.8)) !important;
+  z-index: 1000 !important;
+}
+
+/* Warehouse Icon Hover */
+.marker-warehouse:hover {
+  transform: scale(1.5) !important;
+  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.7) !important;
+  border: 3px solid #ffffff !important;
+  z-index: 1000 !important;
+}
+
+/* Repair Center Icon Hover */
+.marker-repair-center:hover {
+  transform: scale(1.6) !important;
+  box-shadow: 0 8px 20px rgba(251, 191, 36, 0.9) !important;
+  border: 4px solid #ffffff !important;
+  z-index: 1000 !important;
+}
+
+/* Custom Marker Tooltip Styling */
+.custom-marker-tooltip .leaflet-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.custom-marker-tooltip .leaflet-tooltip-top:before,
+.custom-marker-tooltip .leaflet-tooltip-bottom:before,
+.custom-marker-tooltip .leaflet-tooltip-left:before,
+.custom-marker-tooltip .leaflet-tooltip-right:before {
+  display: none !important;
 }
 
 /* Custom Tooltip Styling */
@@ -1428,12 +1511,80 @@ html.light-theme [class*="bg-gradient"] {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
 }
 
+/* Exception: Remove border from KPI cards in light mode - HIGH PRIORITY */
+html.light-theme .engineer-kpi-card,
+html.light-theme #engineer-training-kpi-cards > div,
+html.light-theme #engineer-training-kpi-cards > div.bg-gradient-to-br,
+html.light-theme #engineer-training-kpi-cards [class*="bg-gradient-to-br"],
+html.light-theme #engineer-training-kpi-cards [class*="bg-gradient"],
+html.light-theme #engineer-training-kpi-cards div[class*="from-blue"],
+html.light-theme #engineer-training-kpi-cards div[class*="from-orange"],
+html.light-theme #engineer-training-kpi-cards div[class*="from-purple"] {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+}
+
 html.light-theme .bg-gradient-to-br .text-sm,
 html.light-theme .bg-gradient-to-br .text-2xl,
 html.light-theme .bg-gradient-to-br .text-xs,
 html.light-theme .bg-gradient-to-br p,
 html.light-theme .bg-gradient-to-br h3 {
   color: #1e293b !important;
+}
+
+/* Gradient text fixes for light mode - darker colors for better contrast */
+/* Blue to Indigo gradient */
+html.light-theme [class*="from-blue-400"][class*="to-indigo-400"].bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-blue-400.to-indigo-400.bg-clip-text {
+  background: linear-gradient(to right, #2563eb 0%, #4f46e5 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+/* Blue to Cyan gradient */
+html.light-theme [class*="from-blue-400"][class*="to-cyan-400"].bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-blue-400.to-cyan-400.bg-clip-text {
+  background: linear-gradient(to right, #2563eb 0%, #0891b2 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+/* Cyan to Teal gradient */
+html.light-theme [class*="from-cyan-400"][class*="to-teal-400"].bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-cyan-400.to-teal-400.bg-clip-text {
+  background: linear-gradient(to right, #0891b2 0%, #0d9488 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+/* Purple to Indigo gradient */
+html.light-theme [class*="from-purple-400"][class*="to-indigo-400"].bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-purple-400.to-indigo-400.bg-clip-text {
+  background: linear-gradient(to right, #9333ea 0%, #4f46e5 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+
+/* Blue to Purple gradient */
+html.light-theme [class*="from-blue-300"][class*="to-purple-300"].bg-clip-text,
+html.light-theme [class*="from-blue-400"][class*="to-purple-400"].bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-blue-300.to-purple-300.bg-clip-text,
+html.light-theme .bg-gradient-to-r.from-blue-400.to-purple-400.bg-clip-text {
+  background: linear-gradient(to right, #2563eb 0%, #9333ea 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
 }
 
 html.light-theme .bg-gradient-to-br button {
@@ -1544,9 +1695,21 @@ html.light-theme [class*="to-purple"] {
    TOOLTIPS & HOVER - LIGHT MODE
    ======================================== */
 
-/* Recharts Tooltips */
+/* Recharts Tooltips - Simple and contained within chart area */
+.recharts-tooltip-wrapper {
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
+.recharts-default-tooltip {
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
+/* Light theme tooltips */
 html.light-theme .recharts-tooltip-wrapper {
   filter: none !important;
+  z-index: 10000 !important;
 }
 
 html.light-theme .recharts-default-tooltip {
@@ -1610,11 +1773,11 @@ html.light-theme .bg-gradient-to-r.from-green-500 {
   background: linear-gradient(90deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%) !important;
 }
 
-/* Blue card progress bars - vibrant orange gradient */
+/* Blue card progress bars - vibrant blue gradient for light mode */
 html.light-theme .from-blue-500,
 html.light-theme .from-blue-400,
 html.light-theme .bg-gradient-to-r.from-blue-500 {
-  background: linear-gradient(90deg, #ea580c 0%, #f97316 50%, #fb923c 100%) !important;
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 50%, #93c5fd 100%) !important;
 }
 
 /* Purple card progress bars - vibrant teal gradient */

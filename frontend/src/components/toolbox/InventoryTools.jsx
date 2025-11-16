@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Package, Plus, Edit, Trash2, Search, Grid, List, Eye, Camera, Upload, X, Save, Image, Download } from 'react-feather';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -47,16 +47,12 @@ const InventoryTools = () => {
     primaryKey: 'tools_name',
     eventName: 'toolDataChanged'
   });
-  
-  // Export hook
-  const { handleExport, isExporting } = useToolExport();
 
   // Fetch tools
   useEffect(() => {
     isMountedRef.current = true;
     const fetchTools = async () => {
       if (fetchInProgressRef.current) {
-        console.log('[InventoryTools] Fetch already in progress, skipping');
         return;
       }
       fetchInProgressRef.current = true;
@@ -64,9 +60,6 @@ const InventoryTools = () => {
         if (isMountedRef.current) setLoading(true);
         
         const apiUrl = `${API_BASE_URL}/tools`;
-        console.log('[InventoryTools] Fetching from:', apiUrl);
-        console.log('[InventoryTools] API_BASE_URL:', API_BASE_URL);
-        
         const response = await fetch(apiUrl);
         
         if (!isMountedRef.current) {
@@ -74,25 +67,13 @@ const InventoryTools = () => {
           return;
         }
         
-        console.log('[InventoryTools] Response status:', response.status);
-        console.log('[InventoryTools] Response headers:', Object.fromEntries(response.headers.entries()));
-        
         const contentType = response.headers.get('content-type');
-        console.log('[InventoryTools] Content-Type:', contentType);
         
         if (!contentType || !contentType.includes('application/json')) {
           const text = await response.text();
-          console.warn('[InventoryTools] Expected JSON but got:', contentType);
-          console.warn('[InventoryTools] Response text (first 200 chars):', text.substring(0, 200));
           
           // Check if backend is not available (response is HTML, likely from SPA fallback)
           const isBackendUnavailable = text.includes('<!doctype html>') || text.includes('<html') || response.status === 404;
-          
-          if (isBackendUnavailable) {
-            // Silently handle missing backend - no error toast
-            // Backend might not be deployed in production, which is expected
-            console.info('[InventoryTools] Backend not available. Tools feature requires backend API.');
-          }
           
           if (isMountedRef.current) {
             setTools([]);
@@ -104,8 +85,6 @@ const InventoryTools = () => {
         
         if (response.ok) {
           const data = await response.json();
-          console.log('[InventoryTools] Received data:', data);
-          console.log('[InventoryTools] Data type:', typeof data, 'Is array:', Array.isArray(data));
           
           if (!isMountedRef.current) {
             fetchInProgressRef.current = false;
@@ -120,23 +99,14 @@ const InventoryTools = () => {
           } else if (data.rows && Array.isArray(data.rows)) {
             toolsData = data.rows;
           } else {
-            console.warn('[InventoryTools] Unexpected data format:', data);
             toolsData = [];
           }
           
-          console.log('[InventoryTools] Parsed toolsData:', toolsData);
-          console.log('[InventoryTools] Tools count:', toolsData.length);
           setTools(toolsData);
         } else {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('[InventoryTools] Error response:', response.status, errorData);
-          
-          // Handle errors silently - don't show toast for backend unavailable
-          // 404 means backend endpoint doesn't exist (backend not deployed)
-          if (response.status === 404) {
-            console.info('[InventoryTools] Backend endpoint not found (404). Backend might not be deployed.');
-          } else {
-            // For other errors, only log (no toast to avoid annoying users)
+          // Handle errors silently for unavailable backend
+          if (response.status !== 404) {
+            const errorData = await response.json().catch(() => ({}));
             console.error('[InventoryTools] Error loading tools:', errorData.error || response.statusText);
           }
           
@@ -147,12 +117,10 @@ const InventoryTools = () => {
           fetchInProgressRef.current = false;
           return;
         }
-        console.error('[InventoryTools] Error fetching tools:', error);
-        console.error('[InventoryTools] Error details:', error.message, error.stack);
-        
-        // Silently handle network errors - no error toast
-        // Backend might not be deployed, which is expected in some environments
-        console.info('[InventoryTools] Failed to fetch tools:', error.message);
+        // Silently handle network errors - backend might not be deployed
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[InventoryTools] Fetch error:', error.message);
+        }
         
         if (isMountedRef.current) setTools([]);
       } finally {
@@ -169,7 +137,6 @@ const InventoryTools = () => {
         clearTimeout(debounceTimeoutRef.current);
       }
       debounceTimeoutRef.current = setTimeout(() => {
-        console.log('[InventoryTools] Data change event received, fetching...');
         fetchTools();
       }, 500);
     };
@@ -199,6 +166,9 @@ const InventoryTools = () => {
     
     return filtered;
   }, [tools, searchTerm]);
+
+  // Export hook
+  const { handleExport, isExporting } = useToolExport(() => filteredTools);
 
   // Handle photo upload
   const handlePhotoUpload = async (e) => {
@@ -279,7 +249,7 @@ const InventoryTools = () => {
   };
 
   // Open modal for create/edit
-  const openModal = (tool = null) => {
+  const openModal = useCallback((tool = null) => {
     if (tool) {
       setEditingTool(tool);
       setModalMode('edit');
@@ -301,13 +271,13 @@ const InventoryTools = () => {
       setModalMode('create');
     }
     setShowModal(true);
-  };
+  }, []);
 
   // Close modal
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setShowModal(false);
     resetForm();
-  };
+  }, []);
 
   // Compare form data with original tool data to detect changes
   const hasChanges = (originalTool, newFormData) => {
@@ -427,7 +397,7 @@ const InventoryTools = () => {
   };
 
   // Handle delete
-  const handleDelete = (tool) => {
+  const handleDelete = useCallback((tool) => {
     const toolName = tool.tools_name || tool['Part Name'] || tool['TOOLS NAME'];
     confirm.showConfirm(
       `Apakah Anda yakin ingin menghapus "${toolName}"?`,
@@ -447,7 +417,7 @@ const InventoryTools = () => {
         type: 'danger'
       }
     );
-  };
+  }, [crud, confirm]);
 
   // Helper function to get photo URL (supports both base64 and server path)
   const getPhotoUrl = (photo) => {
@@ -565,7 +535,7 @@ const InventoryTools = () => {
           </div>
           {/* Export Button */}
           <button
-            onClick={() => handleExport(filteredTools, null, 'tool')}
+            onClick={handleExport}
             disabled={filteredTools.length === 0 || isExporting}
             className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1 sm:gap-1.5"
             title={filteredTools.length === 0 ? "Tidak ada data untuk diekspor" : "Export data ke CSV"}

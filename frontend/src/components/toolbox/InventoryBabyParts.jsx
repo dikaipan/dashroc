@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Package, Plus, Edit, Trash2, Search, Grid, List, Eye, X, Save } from 'react-feather';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -42,7 +42,6 @@ const InventoryBabyParts = () => {
     isMountedRef.current = true;
     const fetchBabyParts = async () => {
       if (fetchInProgressRef.current) {
-        console.log('[InventoryBabyParts] Fetch already in progress, skipping');
         return;
       }
       fetchInProgressRef.current = true;
@@ -50,9 +49,6 @@ const InventoryBabyParts = () => {
         if (isMountedRef.current) setLoading(true);
         
         const apiUrl = `${API_BASE_URL}/baby-parts`;
-        console.log('[InventoryBabyParts] Fetching from:', apiUrl);
-        console.log('[InventoryBabyParts] API_BASE_URL:', API_BASE_URL);
-        
         const response = await fetch(apiUrl);
         
         if (!isMountedRef.current) {
@@ -60,25 +56,13 @@ const InventoryBabyParts = () => {
           return;
         }
         
-        console.log('[InventoryBabyParts] Response status:', response.status);
-        console.log('[InventoryBabyParts] Response headers:', Object.fromEntries(response.headers.entries()));
-        
         const contentType = response.headers.get('content-type');
-        console.log('[InventoryBabyParts] Content-Type:', contentType);
         
         if (!contentType || !contentType.includes('application/json')) {
           const text = await response.text();
-          console.warn('[InventoryBabyParts] Expected JSON but got:', contentType);
-          console.warn('[InventoryBabyParts] Response text (first 200 chars):', text.substring(0, 200));
           
           // Check if backend is not available (response is HTML, likely from SPA fallback)
           const isBackendUnavailable = text.includes('<!doctype html>') || text.includes('<html') || response.status === 404;
-          
-          if (isBackendUnavailable) {
-            // Silently handle missing backend - no error toast
-            // Backend might not be deployed in production, which is expected
-            console.info('[InventoryBabyParts] Backend not available. Baby parts feature requires backend API.');
-          }
           
           if (isMountedRef.current) {
             setBabyParts([]);
@@ -90,8 +74,6 @@ const InventoryBabyParts = () => {
         
         if (response.ok) {
           const data = await response.json();
-          console.log('[InventoryBabyParts] Received data:', data);
-          console.log('[InventoryBabyParts] Data type:', typeof data, 'Is array:', Array.isArray(data));
           
           if (!isMountedRef.current) {
             fetchInProgressRef.current = false;
@@ -106,25 +88,16 @@ const InventoryBabyParts = () => {
           } else if (data.rows && Array.isArray(data.rows)) {
             partsData = data.rows;
           } else {
-            console.warn('[InventoryBabyParts] Unexpected data format:', data);
             partsData = [];
           }
           
-          console.log('[InventoryBabyParts] Parsed partsData:', partsData);
-          console.log('[InventoryBabyParts] Parts count:', partsData.length);
           if (isMountedRef.current) {
             setBabyParts(partsData);
           }
         } else {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('[InventoryBabyParts] Error response:', response.status, errorData);
-          
-          // Handle errors silently - don't show toast for backend unavailable
-          // 404 means backend endpoint doesn't exist (backend not deployed)
-          if (response.status === 404) {
-            console.info('[InventoryBabyParts] Backend endpoint not found (404). Backend might not be deployed.');
-          } else {
-            // For other errors, only log (no toast to avoid annoying users)
+          // Handle errors silently for unavailable backend
+          if (response.status !== 404) {
+            const errorData = await response.json().catch(() => ({}));
             console.error('[InventoryBabyParts] Error loading baby parts:', errorData.error || response.statusText);
           }
           
@@ -135,12 +108,10 @@ const InventoryBabyParts = () => {
           fetchInProgressRef.current = false;
           return;
         }
-        console.error('[InventoryBabyParts] Error fetching baby parts:', error);
-        console.error('[InventoryBabyParts] Error details:', error.message, error.stack);
-        
-        // Silently handle network errors - no error toast
-        // Backend might not be deployed, which is expected in some environments
-        console.info('[InventoryBabyParts] Failed to fetch baby parts:', error.message);
+        // Silently handle network errors - backend might not be deployed
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[InventoryBabyParts] Fetch error:', error.message);
+        }
         
         if (isMountedRef.current) setBabyParts([]);
       } finally {
@@ -199,7 +170,7 @@ const InventoryBabyParts = () => {
   };
 
   // Open modal for create/edit
-  const openModal = (babyPart = null) => {
+  const openModal = useCallback((babyPart = null) => {
     if (babyPart) {
       setEditingBabyPart(babyPart);
       setModalMode('edit');
@@ -212,13 +183,13 @@ const InventoryBabyParts = () => {
       setModalMode('create');
     }
     setShowModal(true);
-  };
+  }, []);
 
   // Close modal
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setShowModal(false);
     resetForm();
-  };
+  }, []);
 
   // Compare form data with original baby part data to detect changes
   const hasChanges = (originalBabyPart, newFormData) => {
@@ -308,7 +279,7 @@ const InventoryBabyParts = () => {
   };
 
   // Handle delete
-  const handleDelete = (babyPart) => {
+  const handleDelete = useCallback((babyPart) => {
     const babyPartName = babyPart.baby_parts || babyPart['Baby Parts'] || babyPart['BABY PARTS'];
     confirm.showConfirm(
       `Apakah Anda yakin ingin menghapus "${babyPartName}"?`,
@@ -328,7 +299,7 @@ const InventoryBabyParts = () => {
         type: 'danger'
       }
     );
-  };
+  }, [crud, confirm]);
 
   // Get quantity status
   const getQuantityStatus = (qty) => {

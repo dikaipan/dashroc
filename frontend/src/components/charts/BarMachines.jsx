@@ -32,8 +32,8 @@ export default function BarMachines({ machinesFiltered, filterCategory, filterVa
   }));
 
   return (
-    <div style={{ width: "100%", height: "280px" }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div style={{ width: "100%", height: "280px", minHeight: "280px", minWidth: "100px", position: "relative", display: "block" }}>
+      <ResponsiveContainer width="100%" height={280} minHeight={280} minWidth={100}>
         <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
           <XAxis 

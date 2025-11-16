@@ -16,10 +16,10 @@ export default function PageLayout({
   headerClassName = '',
 }) {
   return (
-    <div className={`p-3 sm:p-6 space-y-4 sm:space-y-6 min-h-screen ${className} ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-900 overflow-auto' : ''}`}>
+    <div className={`py-3 sm:py-6 space-y-4 sm:space-y-6 min-h-screen ${className} ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-900 overflow-auto' : ''}`}>
       {/* Page Header */}
       {(title || actions || onToggleFullscreen) && (
-        <div className={`flex items-center justify-between flex-wrap gap-3 sm:gap-4 ${headerClassName}`}>
+        <div className={`flex items-center justify-between flex-wrap gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8 ${headerClassName}`}>
           <div className="flex-1 min-w-0">
             {title && (
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-100 mb-1 truncate">{title}</h1>

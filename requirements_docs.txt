@@ -1,0 +1,13 @@
+# Requirements untuk konversi dokumentasi
+# Install dengan: pip install -r requirements_docs.txt
+
+# Untuk konversi ke PDF
+weasyprint>=60.0
+
+# Untuk konversi ke PowerPoint
+python-pptx>=0.6.21
+beautifulsoup4>=4.12.0
+
+# Alternatif untuk PDF (memerlukan wkhtmltopdf)
+# pdfkit>=1.0.0
+

@@ -151,5 +151,94 @@ export function useFSLLocationData() {
   };
 }
 
+/**
+ * Hook for fetching leveling data
+ * Uses generic useDataFetch hook
+ */
+export function useLevelingData() {
+  const { data, loading, error } = useDataFetch('/api/leveling');
+
+  return { 
+    rows: data, 
+    loading, 
+    error 
+  };
+}
+
+/**
+ * Hook for fetching SO (Service Order) resolution times data
+ * Uses generic useDataFetch hook
+ * @param {Array<string>} months - Optional array of months to filter (e.g., ['April', 'May', 'June'])
+ */
+export function useSOData(months = null) {
+  const monthsParam = months ? months.join(',') : null;
+  const endpoint = monthsParam 
+    ? `/api/so-data?months=${encodeURIComponent(monthsParam)}`
+    : '/api/so-data';
+  
+  const { data, loading, error } = useDataFetch(endpoint);
+
+  return { 
+    data, 
+    loading, 
+    error 
+  };
+}
+
+/**
+ * Hook for fetching raw SO records with all fields
+ * Uses generic useDataFetch hook
+ * @param {Array<string>} months - Optional array of months to filter (e.g., ['April', 'May', 'June'])
+ */
+export function useRawSOData(months = null) {
+  const monthsParam = months ? months.join(',') : null;
+  const endpoint = monthsParam 
+    ? `/api/so-data/raw?months=${encodeURIComponent(monthsParam)}`
+    : '/api/so-data/raw';
+  
+  // Untuk raw SO data, matikan cache agar selalu pakai data terbaru
+  const { data, loading, error } = useDataFetch(endpoint, { useCache: false });
+
+  return { 
+    data, 
+    loading, 
+    error 
+  };
+}
+
+/**
+ * Hook for fetching customer intelligence data (aggregated by area_group)
+ * Uses generic useDataFetch hook
+ * Data sudah di-aggregate di backend dengan normalisasi area_group
+ */
+export function useCustomerIntelligenceData() {
+  const endpoint = '/api/so-data/customer-intelligence';
+  
+  const { data, loading, error } = useDataFetch(endpoint, { useCache: false });
+
+  return { 
+    data, 
+    loading, 
+    error 
+  };
+}
+
+/**
+ * Hook for fetching engineer-customer relationship data
+ * Uses generic useDataFetch hook
+ * Returns matrix of engineer-customer pairs with SO counts and coverage stats
+ */
+export function useEngineerCustomerRelationships() {
+  const endpoint = '/api/so-data/engineer-customer-relationships';
+  
+  const { data, loading, error } = useDataFetch(endpoint, { useCache: false });
+
+  return { 
+    data, 
+    loading, 
+    error 
+  };
+}
+
 // Export CSV parsers for backward compatibility
 export { parseCSV, parseMachinesCSV, parseCSVLine };

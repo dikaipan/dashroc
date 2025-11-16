@@ -168,7 +168,11 @@ const CITY_TO_PROVINCE = {
   'Bandar Lampung': 'LAMPUNG',
   'Palangkaraya': 'KALIMANTAN TENGAH',
   'Bengkulu': 'BENGKULU',
-  'Pematang Siantar': 'SUMATERA UTARA'
+  'Pematang Siantar': 'SUMATERA UTARA',
+  'Palopo': 'SULAWESI BARAT',
+  'Mamuju': 'SULAWESI BARAT',
+  'Polewali': 'SULAWESI BARAT',
+  'Majene': 'SULAWESI BARAT'
 };
 
 const CHART_COLORS = {
@@ -199,8 +203,6 @@ export default function StockPart() {
     primaryKey: 'part_number',
     eventName: 'stockPartDataChanged'
   });
-  
-  const { handleExport, isExporting } = useStockPartExport();
   
   const [fullscreenChart, setFullscreenChart] = useState(null);
   const [fullscreenKPI, setFullscreenKPI] = useState(null); // For KPI cards fullscreen
@@ -273,6 +275,8 @@ export default function StockPart() {
 
   // Use custom hooks for business logic
   const { filteredStockParts, filteredParts } = useStockPartFilters(stockParts, validParts, { searchQuery, sortBy, sortValue });
+  
+  const { handleExport, isExporting } = useStockPartExport(() => filteredParts);
 
   // Parts distribution by FSL for chart
   const partsDistributionByFSL = useMemo(() => {
@@ -311,6 +315,8 @@ export default function StockPart() {
     stockByType,
     topPartsByStock,
     top20UsageParts,
+    stockHealth,
+    stockUtilization,
     totalFSL,
     totalParts
   } = kpis;
@@ -777,7 +783,9 @@ const handleDelete = (part) => {
             <div className="flex-1">
               <p className={TEXT_STYLES.kpiTitle}>Total Stock Quantity</p>
               <h3 className={TEXT_STYLES.kpiValue}>{totalStockQuantity.toLocaleString()}</h3>
-              <p className={TEXT_STYLES.kpiSubtitle}>Unit tersedia</p>
+              <p className={TEXT_STYLES.kpiSubtitle}>
+                {totalStockQuantity > 0 ? `${totalParts} parts • ${stockUtilization.avgStockPerPart} avg/part` : 'Tidak ada stock tersedia'}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -790,18 +798,80 @@ const handleDelete = (part) => {
               <div className="text-3xl">📊</div>
             </div>
           </div>
-          <div className="flex-1 flex flex-col justify-end">
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              <div className={cn(ALERT_STYLES.info, 'p-3')}>
-                <p className={TEXT_STYLES.kpiSubtitle}>Total Parts</p>
-                <p className={cn('text-lg font-bold text-blue-400')}>{totalParts}</p>
+          
+          {totalStockQuantity > 0 ? (
+            <div className="flex-1 flex flex-col gap-3 mt-2">
+              {/* Stock Health Indicators */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className={cn(ALERT_STYLES.info, 'p-2.5')}>
+                  <p className={cn('text-[10px]', TEXT_STYLES.mutedSmall)}>Healthy Stock</p>
+                  <p className={cn('text-base font-bold text-green-400')}>
+                    {stockHealth.healthyCount}
+                    {stockHealth.totalPartsCount > 0 && (
+                      <span className="text-xs text-slate-400 ml-1">
+                        ({stockHealth.healthyPercentage}%)
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className={cn('p-2.5 border rounded-lg', stockHealth.criticalCount > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-slate-700/30 border-slate-600/30')}>
+                  <p className={cn('text-[10px]', TEXT_STYLES.mutedSmall)}>Out of Stock</p>
+                  <p className={cn('text-base font-bold', stockHealth.criticalCount > 0 ? 'text-red-400' : 'text-slate-400')}>
+                    {stockHealth.criticalCount}
+                    {stockHealth.totalPartsCount > 0 && (
+                      <span className="text-xs text-slate-400 ml-1">
+                        ({stockHealth.criticalPercentage}%)
+                      </span>
+                    )}
+                  </p>
+                </div>
               </div>
-              <div className={cn(getGradientCard('purple', false), 'p-3')}>
-                <p className={TEXT_STYLES.kpiSubtitle}>Avg/Part</p>
-                <p className={cn('text-lg font-bold text-purple-400')}>{totalParts > 0 ? Math.round(totalStockQuantity / totalParts) : 0}</p>
+
+              {/* Additional Metrics */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className={cn(getGradientCard('blue', false), 'p-2.5')}>
+                  <p className={cn('text-[10px]', TEXT_STYLES.mutedSmall)}>Total Parts</p>
+                  <p className={cn('text-base font-bold text-blue-400')}>{totalParts}</p>
+                </div>
+                <div className={cn(getGradientCard('purple', false), 'p-2.5')}>
+                  <p className={cn('text-[10px]', TEXT_STYLES.mutedSmall)}>Median Stock</p>
+                  <p className={cn('text-base font-bold text-purple-400')}>
+                    {stockUtilization.medianStockPerPart}
+                  </p>
+                </div>
               </div>
+
+              {/* Stock Distribution Indicator */}
+              {stockUtilization.stockConcentration > 0 && (
+                <div className="mt-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className={cn('text-[10px]', TEXT_STYLES.mutedSmall)}>Stock Concentration</p>
+                    <p className={cn('text-[10px] font-semibold', 
+                      stockUtilization.stockConcentration > 80 ? 'text-orange-400' :
+                      stockUtilization.stockConcentration > 60 ? 'text-yellow-400' : 'text-green-400'
+                    )}>
+                      {stockUtilization.stockConcentration}%
+                    </p>
+                  </div>
+                  <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                    <div 
+                      className={cn('h-full transition-all',
+                        stockUtilization.stockConcentration > 80 ? 'bg-orange-500' :
+                        stockUtilization.stockConcentration > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                      )}
+                      style={{ width: `${Math.min(stockUtilization.stockConcentration, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 mt-4">
+              <div className="text-4xl opacity-50">📦</div>
+              <p className={cn('text-sm', TEXT_STYLES.mutedSmall)}>Belum ada data stock</p>
+              <p className={cn('text-xs', TEXT_STYLES.mutedSmall)}>Tambahkan stock part untuk melihat informasi</p>
+            </div>
+          )}
         </div>
 
         {/* Top Parts by Stock */}
@@ -823,8 +893,8 @@ const handleDelete = (part) => {
             </div>
           </div>
           {topPartsByStock.length > 0 && (
-            <div className="flex-1 mt-2">
-              <ResponsiveContainer width="100%" height={150}>
+            <div className="flex-1 mt-2" style={{ minWidth: '100px', position: 'relative', display: 'block' }}>
+              <ResponsiveContainer width="100%" height={150} minHeight={150} minWidth={100}>
                 <BarChart data={topPartsByStock} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
                   <XAxis 
                     dataKey="name" 
@@ -1190,8 +1260,9 @@ const handleDelete = (part) => {
             </div>
           </div>
           {!fullscreenChart && (
-            <ResponsiveContainer width="100%" height={350}>
-              <PieChart>
+            <div style={{ minWidth: '100px', position: 'relative', width: '100%', display: 'block' }}>
+              <ResponsiveContainer width="100%" height={350} minHeight={350} minWidth={100}>
+                <PieChart>
                 <Pie
                   data={regionDistribution}
                   cx="50%"
@@ -1211,7 +1282,8 @@ const handleDelete = (part) => {
                   labelStyle={{ color: '#e2e8f0' }}
                 />
               </PieChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       </div>
@@ -1269,7 +1341,7 @@ const handleDelete = (part) => {
                 </label>
                 
                 <button
-                  onClick={() => handleExport(filteredParts, null, 'stock part')}
+                  onClick={handleExport}
                   disabled={filteredParts.length === 0 || isExporting}
                   className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1 sm:gap-1.5"
                   title={filteredParts.length === 0 ? "Tidak ada data untuk diekspor" : "Export data ke CSV"}

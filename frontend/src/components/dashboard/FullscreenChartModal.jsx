@@ -2,14 +2,17 @@
  * Fullscreen Chart Modal Component
  * Reusable modal for displaying charts in fullscreen mode
  */
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, PieChart, Pie, Cell, ReferenceLine } from 'recharts';
-import MapWithRegions from '../map/MapWithRegions.jsx';
-import SkillProgress from '../charts/SkillProgress.jsx';
-import BarMachines from '../charts/BarMachines.jsx';
+// Lazy load heavy components for better code splitting
+const MapWithRegions = lazy(() => import('../map/MapWithRegions.jsx'));
+const SkillProgress = lazy(() => import('../charts/SkillProgress.jsx'));
+const BarMachines = lazy(() => import('../charts/BarMachines.jsx'));
+import LoadingSkeleton from '../common/LoadingSkeleton';
 import { getGradientCard, TEXT_STYLES, cn } from '../../constants/styles';
 import { useTheme } from '../../contexts/ThemeContext';
-import { CHART_COLORS_DARK, CHART_COLORS_LIGHT } from "../../utils/chartConfig.js";
+import { CHART_COLORS_DARK, CHART_COLORS_LIGHT, OPTIMIZED_BAR_PROPS, OPTIMIZED_LINE_PROPS, OPTIMIZED_PIE_PROPS } from "../../utils/chartConfig.js";
+import { limitChartData } from "../../utils/chartOptimization.js";
 
 const CHART_DESCRIPTIONS = {
   "machines": {
@@ -124,26 +127,30 @@ export default function FullscreenChartModal({
       case "machines":
         return (
           <div className="w-full h-full">
-            <BarMachines machinesFiltered={filteredMachines} />
+            <Suspense fallback={<LoadingSkeleton type="spinner" message="Memuat grafik mesin..." />}>
+              <BarMachines machinesFiltered={filteredMachines} />
+            </Suspense>
           </div>
         );
 
       case "map":
         return (
           <div className="w-full h-full" style={{ minHeight: '600px', height: '100%' }}>
-            <MapWithRegions 
-              machines={filteredMachines || []} 
-              engineers={filteredEngineers || []}
-              onEngineerClick={onEngineerClick}
-            />
+            <Suspense fallback={<LoadingSkeleton type="spinner" message="Memuat peta..." />}>
+              <MapWithRegions 
+                machines={filteredMachines || []} 
+                engineers={filteredEngineers || []}
+                onEngineerClick={onEngineerClick}
+              />
+            </Suspense>
           </div>
         );
 
       case "experience":
         return (
-          <div className="w-full h-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={experienceData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+          <div className="w-full" style={{ minHeight: '400px', height: '400px', minWidth: '100px', position: 'relative', display: 'block' }}>
+            <ResponsiveContainer width="100%" height={400} minHeight={400} minWidth={100}>
+              <BarChart data={limitChartData(experienceData, 50)} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                 <XAxis 
                   dataKey="range" 
@@ -164,7 +171,7 @@ export default function FullscreenChartModal({
                   labelStyle={{ color: "#ffffff", fontWeight: "bold" }}
                   itemStyle={{ color: "#ffffff" }}
                 />
-                <Bar dataKey="count" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="count" fill="#3b82f6" radius={[8, 8, 0, 0]} {...OPTIMIZED_BAR_PROPS} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -172,9 +179,9 @@ export default function FullscreenChartModal({
 
       case "skills":
         return (
-          <div className="w-full h-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={skillsData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+          <div className="w-full" style={{ minHeight: '400px', height: '400px', minWidth: '100px', position: 'relative', display: 'block' }}>
+            <ResponsiveContainer width="100%" height={400} minHeight={400} minWidth={100}>
+              <BarChart data={limitChartData(skillsData, 50)} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                 <XAxis 
                   dataKey="skill" 
@@ -205,16 +212,17 @@ export default function FullscreenChartModal({
 
       case "training":
         return (
-          <div className="w-full h-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="w-full" style={{ minHeight: '400px', height: '400px', minWidth: '100px', position: 'relative', display: 'block' }}>
+            <ResponsiveContainer width="100%" height={400} minHeight={400} minWidth={100}>
               <PieChart>
                 <Pie 
-                  data={trainingData} 
+                  data={limitChartData(trainingData, 20)} 
                   dataKey="value" 
                   nameKey="name" 
                   cx="50%"
                   cy="50%"
                   outerRadius="40%"
+                  {...OPTIMIZED_PIE_PROPS}
                   label={({ name, value }) => `${name}: ${value}`}
                   labelLine={true}
                 >
@@ -240,17 +248,19 @@ export default function FullscreenChartModal({
       case "training-skills":
         return (
           <div className="w-full h-full overflow-y-auto pr-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredEngineers.length > 0 ? (
-                filteredEngineers.map((engineer, idx) => (
-                  <SkillProgress key={idx} engineer={engineer} />
-                ))
-              ) : (
-                <div className="col-span-full flex items-center justify-center h-full text-slate-500">
-                  No engineers data available
-                </div>
-              )}
-            </div>
+            <Suspense fallback={<LoadingSkeleton type="spinner" message="Memuat progress skills..." />}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredEngineers.length > 0 ? (
+                  filteredEngineers.map((engineer, idx) => (
+                    <SkillProgress key={idx} engineer={engineer} />
+                  ))
+                ) : (
+                  <div className="col-span-full flex items-center justify-center h-full text-slate-500">
+                    No engineers data available
+                  </div>
+                )}
+              </div>
+            </Suspense>
           </div>
         );
 
@@ -376,8 +386,9 @@ export default function FullscreenChartModal({
             {regionData.length > 0 && (
               <div style={{ height: '350px' }}>
                 <h4 className="text-sm font-semibold text-slate-300 mb-2">Top 10 Region</h4>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={regionData} margin={{ top: 10, right: 20, left: 10, bottom: 60 }}>
+                <div style={{ minWidth: '100px', position: 'relative', width: '100%', display: 'block' }}>
+                  <ResponsiveContainer width="100%" height={300} minHeight={300} minWidth={100}>
+                    <BarChart data={limitChartData(regionData, 50)} margin={{ top: 10, right: 20, left: 10, bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                     <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
                     <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} />
@@ -386,18 +397,19 @@ export default function FullscreenChartModal({
                       labelStyle={{ color: "#ffffff", fontWeight: "bold" }}
                       itemStyle={{ color: "#ffffff" }}
                     />
-                    <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                    <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} {...OPTIMIZED_BAR_PROPS} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             )}
             
             {/* Breakdown by Area */}
             {areaData.length > 0 && (
-              <div style={{ height: '350px' }}>
+              <div style={{ height: '350px', minWidth: '100px', position: 'relative', width: '100%', display: 'block' }}>
                 <h4 className="text-sm font-semibold text-slate-300 mb-2">Top 10 Area Group</h4>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={areaData} margin={{ top: 10, right: 20, left: 10, bottom: 60 }}>
+                <ResponsiveContainer width="100%" height={300} minHeight={300} minWidth={100}>
+                  <BarChart data={limitChartData(areaData, 50)} margin={{ top: 10, right: 20, left: 10, bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                     <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
                     <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} />
@@ -406,7 +418,7 @@ export default function FullscreenChartModal({
                       labelStyle={{ color: "#ffffff", fontWeight: "bold" }}
                       itemStyle={{ color: "#ffffff" }}
                     />
-                    <Bar dataKey="value" fill="#60a5fa" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="value" fill="#60a5fa" radius={[4, 4, 0, 0]} {...OPTIMIZED_BAR_PROPS} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -416,35 +428,53 @@ export default function FullscreenChartModal({
       }
 
       case "total-engineers": {
-        // Prepare breakdown data for chart
+        // Valid regions only - filter out area_group names like Jakarta
+        const validRegions = ['Region 1', 'Region 2', 'Region 3'];
+        
+        // Sort by region order (Region 1, Region 2, Region 3)
+        const sortByRegionOrder = (a, b) => {
+          const orderA = validRegions.indexOf(a.name || a.region);
+          const orderB = validRegions.indexOf(b.name || b.region);
+          // If not found, put at end
+          if (orderA === -1) return 1;
+          if (orderB === -1) return -1;
+          return orderA - orderB;
+        };
+        
+        // Prepare breakdown data for chart (only valid regions)
         const regionData = engineersByRegion ? Object.entries(engineersByRegion)
+          .filter(([name]) => validRegions.includes(name)) // Only include valid regions
           .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value) : [];
+          .sort(sortByRegionOrder) : []; // Sort by region order
         
         const areaData = engineersByAreaGroup ? Object.entries(engineersByAreaGroup)
           .map(([name, value]) => ({ name, value }))
           .sort((a, b) => b.value - a.value)
           .slice(0, 10) : [];
         
-        // Calculate ratio per region for chart
-        const ratioData = regionData.map(r => {
-          const machines = machinesByRegion?.[r.name] || 0;
-          const engineers = r.value;
-          return {
-            name: r.name,
-            machines,
-            engineers,
-            ratio: engineers > 0 ? Math.round(machines / engineers) : 0
-          };
-        });
+        // Calculate ratio per region for chart (only valid regions)
+        const ratioData = regionData
+          .filter(r => validRegions.includes(r.name)) // Only include valid regions
+          .map(r => {
+            const machines = machinesByRegion?.[r.name] || 0;
+            const engineers = r.value;
+            return {
+              name: r.name,
+              machines,
+              engineers,
+              ratio: engineers > 0 ? Math.round(machines / engineers) : 0
+            };
+          })
+          .sort(sortByRegionOrder); // Sort by region order
         
         return (
           <div className="w-full h-full space-y-6">
             {/* Comparison Chart */}
             <div className="h-1/4">
               <h4 className="text-sm font-semibold text-slate-300 mb-2">Perbandingan Filter vs Total</h4>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[
+              <div style={{ minWidth: '100px', minHeight: '200px', height: '200px', position: 'relative', width: '100%', display: 'block' }}>
+                <ResponsiveContainer width="100%" height={200} minHeight={200} minWidth={100}>
+                  <BarChart data={[
                   { name: 'Filter', value: currentEngineers },
                   { name: 'Total', value: totalEngineers }
                 ]} margin={{ top: 10, right: 20, left: 10, bottom: 20 }}>
@@ -456,16 +486,17 @@ export default function FullscreenChartModal({
                     labelStyle={{ color: "#ffffff", fontWeight: "bold" }}
                     itemStyle={{ color: "#ffffff" }}
                   />
-                  <Bar dataKey="value" fill="#10b981" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+                  <Bar dataKey="value" fill="#10b981" radius={[8, 8, 0, 0]} {...OPTIMIZED_BAR_PROPS} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
             
             {/* Breakdown by Region */}
             {regionData.length > 0 && (
-              <div className="h-1/4">
+              <div style={{ minWidth: '100px', minHeight: '200px', height: '200px', position: 'relative', display: 'block' }}>
                 <h4 className="text-sm font-semibold text-slate-300 mb-2">Distribusi Engineer per Region</h4>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={200} minHeight={200} minWidth={100}>
                   <BarChart data={regionData} margin={{ top: 10, right: 20, left: 10, bottom: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                     <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} angle={-45} textAnchor="end" height={60} />
@@ -483,10 +514,10 @@ export default function FullscreenChartModal({
             
             {/* Ratio per Region */}
             {ratioData.length > 0 && (
-              <div className="h-1/2">
+              <div style={{ minWidth: '100px', minHeight: '300px', height: '300px', position: 'relative', display: 'block' }}>
                 <h4 className="text-sm font-semibold text-slate-300 mb-2">Rasio Mesin/Engineer per Region</h4>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ratioData} margin={{ top: 10, right: 20, left: 10, bottom: 60 }}>
+                <ResponsiveContainer width="100%" height={300} minHeight={300} minWidth={100}>
+                  <BarChart data={limitChartData(ratioData, 50)} margin={{ top: 10, right: 20, left: 10, bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                     <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
                     <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} />
@@ -517,8 +548,8 @@ export default function FullscreenChartModal({
 
       case "machine-ratio":
         return (
-          <div className="w-full h-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="w-full" style={{ minHeight: '400px', height: '400px', minWidth: '100px', position: 'relative', display: 'block' }}>
+            <ResponsiveContainer width="100%" height={400} minHeight={400} minWidth={100}>
               <LineChart data={[
                 { name: 'Optimal', value: 60 },
                 { name: 'Current', value: currentRatio },
@@ -532,7 +563,7 @@ export default function FullscreenChartModal({
                   labelStyle={{ color: "#ffffff", fontWeight: "bold" }}
                   itemStyle={{ color: "#ffffff" }}
                 />
-                <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={4} dot={{ fill: '#8b5cf6', r: 6 }} />
+                <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={4} {...OPTIMIZED_LINE_PROPS} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -602,8 +633,8 @@ export default function FullscreenChartModal({
                 <div className={TEXT_STYLES.kpiSubtitle}>Perlu perhatian khusus</div>
               </div>
             </div>
-            <div className="flex-1 min-h-0 flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="flex items-center justify-center" style={{ minHeight: '400px', height: '400px', minWidth: '100px', position: 'relative', display: 'block' }}>
+              <ResponsiveContainer width="100%" height={400} minHeight={400} minWidth={100}>
                 <PieChart>
                   <Tooltip 
                     contentStyle={{ backgroundColor: "#0f172a", border: "2px solid #f59e0b", borderRadius: "8px", color: "#ffffff" }}
@@ -611,13 +642,14 @@ export default function FullscreenChartModal({
                     itemStyle={{ color: "#ffffff" }}
                   />
                   <Pie
-                    data={warrantyData}
+                    data={limitChartData(warrantyData, 20)}
                     cx="50%"
                     cy="50%"
                     innerRadius={80}
                     outerRadius={140}
                     dataKey="value"
                     label={false}
+                    {...OPTIMIZED_PIE_PROPS}
                   >
                     <Cell fill="#10b981" />
                     <Cell fill="#ef4444" />
@@ -646,8 +678,8 @@ export default function FullscreenChartModal({
 
       case "machine-age":
         return (
-          <div className="w-full h-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="w-full" style={{ minHeight: '400px', height: '400px', minWidth: '100px', position: 'relative', display: 'block' }}>
+            <ResponsiveContainer width="100%" height={400} minHeight={400} minWidth={100}>
               <BarChart data={machineAgeData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                 <XAxis 
@@ -676,8 +708,8 @@ export default function FullscreenChartModal({
 
       case "install-year":
         return (
-          <div className="w-full h-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="w-full" style={{ minHeight: '400px', height: '400px', minWidth: '100px', position: 'relative', display: 'block' }}>
+            <ResponsiveContainer width="100%" height={400} minHeight={400} minWidth={100}>
               <LineChart data={installYearData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                 <XAxis 
@@ -773,10 +805,24 @@ export default function FullscreenChartModal({
         const diff = totalEngineers - currentEngineers;
         const ratio = currentEngineers > 0 ? Math.round(currentMachines / currentEngineers) : 0;
         
-        // Calculate breakdown by region
+        // Valid regions only - filter out area_group names like Jakarta
+        const validRegions = ['Region 1', 'Region 2', 'Region 3'];
+        
+        // Sort by region order (Region 1, Region 2, Region 3)
+        const sortByRegionOrder = (a, b) => {
+          const orderA = validRegions.indexOf(a.region || a.name);
+          const orderB = validRegions.indexOf(b.region || b.name);
+          // If not found, put at end
+          if (orderA === -1) return 1;
+          if (orderB === -1) return -1;
+          return orderA - orderB;
+        };
+        
+        // Calculate breakdown by region (only valid regions)
         const regionBreakdown = engineersByRegion ? Object.entries(engineersByRegion)
+          .filter(([region]) => validRegions.includes(region)) // Only include valid regions
           .map(([region, count]) => ({ region, count, percentage: ((count / totalEngineers) * 100).toFixed(1) }))
-          .sort((a, b) => b.count - a.count) : [];
+          .sort(sortByRegionOrder) : []; // Sort by region order
         
         // Calculate breakdown by area group
         const areaBreakdown = engineersByAreaGroup ? Object.entries(engineersByAreaGroup)
@@ -784,22 +830,21 @@ export default function FullscreenChartModal({
           .sort((a, b) => b.count - a.count)
           .slice(0, 5) : [];
         
-        // Calculate ratio per region
-        const regionRatios = regionBreakdown.map(r => {
-          const regionMachines = machinesByRegion?.[r.region] || 0;
-          const regionEngineers = r.count;
-          return {
-            region: r.region,
-            machines: regionMachines,
-            engineers: regionEngineers,
-            ratio: regionEngineers > 0 ? Math.round(regionMachines / regionEngineers) : 0,
-            status: regionEngineers > 0 ? (regionMachines / regionEngineers < 60 ? 'Good' : regionMachines / regionEngineers < 70 ? 'Moderate' : 'High') : 'N/A'
-          };
-        }).sort((a, b) => {
-          const ratioA = typeof a.ratio === 'number' ? a.ratio : parseInt(a.ratio);
-          const ratioB = typeof b.ratio === 'number' ? b.ratio : parseInt(b.ratio);
-          return ratioB - ratioA;
-        });
+        // Calculate ratio per region (only valid regions)
+        const regionRatios = regionBreakdown
+          .filter(r => validRegions.includes(r.region)) // Only include valid regions
+          .map(r => {
+            const regionMachines = machinesByRegion?.[r.region] || 0;
+            const regionEngineers = r.count;
+            return {
+              region: r.region,
+              machines: regionMachines,
+              engineers: regionEngineers,
+              ratio: regionEngineers > 0 ? Math.round(regionMachines / regionEngineers) : 0,
+              status: regionEngineers > 0 ? (regionMachines / regionEngineers < 60 ? 'Good' : regionMachines / regionEngineers < 70 ? 'Moderate' : 'High') : 'N/A'
+            };
+          })
+          .sort(sortByRegionOrder); // Sort by region order (Region 1, 2, 3)
         
         const topRegion = regionBreakdown[0];
         const overloadedRegions = regionRatios.filter(r => {

@@ -10,6 +10,8 @@ from .uploads import upload_bp
 from .monthly_machines import monthly_machine_bp
 from .tools import tool_bp
 from .baby_parts import baby_part_bp
+from .leveling import leveling_bp
+from .so_data import so_bp
 
 def register_routes(app: 'Flask') -> None:
     """
@@ -26,3 +28,5 @@ def register_routes(app: 'Flask') -> None:
     app.register_blueprint(monthly_machine_bp, url_prefix='/api')
     app.register_blueprint(tool_bp, url_prefix='/api')
     app.register_blueprint(baby_part_bp, url_prefix='/api')
+    app.register_blueprint(leveling_bp, url_prefix='/api')
+    app.register_blueprint(so_bp, url_prefix='/api')
