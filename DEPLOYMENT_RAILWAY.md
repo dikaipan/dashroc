@@ -5,7 +5,7 @@
 ```bash
 # Commit all changes
 git add .
-git commit -m "chore: Prepare for Railway deployment"
+git commit -m "chore: Prepare for Railway deployment with Docker"
 git push origin main
 ```
 
@@ -16,14 +16,17 @@ git push origin main
 3. Click "New Project"
 4. Select "Deploy from GitHub repo"
 5. Choose `rocdashboard` repository
-6. Railway will auto-detect Python and deploy
+6. Railway will auto-detect Dockerfile and deploy
 
 ## Step 3: Configure Environment
 
 Railway will automatically:
+- Build Docker image from `Dockerfile`
 - Install dependencies from `requirements.txt`
 - Run `python app.py`
 - Expose public URL (e.g., `https://rocdashboard-production.up.railway.app`)
+
+**Note**: Railway now uses Docker instead of Nixpacks (deprecated)
 
 ## Step 4: Get Backend URL
 
