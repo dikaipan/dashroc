@@ -11,7 +11,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy only backend code and data
-COPY app.py .
+COPY app_api.py .
 COPY config.py .
 COPY backend/ ./backend/
 COPY data/ ./data/
@@ -19,5 +19,5 @@ COPY data/ ./data/
 # Expose port (Railway will override with PORT env var)
 EXPOSE 5000
 
-# Run the application (backend API only)
-CMD ["python", "app.py"]
+# Run the API-only application
+CMD ["python", "app_api.py"]
